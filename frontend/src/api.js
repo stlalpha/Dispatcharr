@@ -1290,72 +1290,36 @@ export default class API {
     }
   }
 
-  static async getBackupSettings() {
+  // Simplified Backup API (no job tracking, direct operations)
+  static async listBackups() {
     try {
-      const response = await request(`${host}/api/backups/settings/`);
-      return response;
+      const response = await request(`${host}/api/backups/`);
+      return response || [];
     } catch (e) {
-      errorNotification('Failed to retrieve backup settings', e);
-    }
-  }
-
-  static async updateBackupSettings(payload) {
-    try {
-      const response = await request(`${host}/api/backups/settings/`, {
-        method: 'PUT',
-        body: payload,
-      });
-      return response;
-    } catch (e) {
-      errorNotification('Failed to update backup settings', e);
+      errorNotification('Failed to load backups', e);
       throw e;
     }
   }
 
-  static async getBackupJobs() {
+  static async createBackup() {
     try {
-      const response = await request(`${host}/api/backups/jobs/`);
-      return response?.results || response || [];
-    } catch (e) {
-      errorNotification('Failed to load backup history', e);
-      throw e;
-    }
-  }
-
-  static async createBackupJob() {
-    try {
-      const response = await request(`${host}/api/backups/jobs/`, {
+      const response = await request(`${host}/api/backups/create/`, {
         method: 'POST',
       });
       return response;
     } catch (e) {
-      errorNotification('Failed to start backup job', e);
+      errorNotification('Failed to create backup', e);
       throw e;
     }
   }
 
-  static async restoreBackupJob(jobId) {
-    try {
-      const response = await request(
-        `${host}/api/backups/jobs/${jobId}/restore/`,
-        {
-          method: 'POST',
-        }
-      );
-      return response;
-    } catch (e) {
-      errorNotification('Failed to start restore job', e);
-      throw e;
-    }
-  }
-
-  static async uploadAndRestoreBackup(file) {
+  static async uploadBackup(file) {
     try {
       const formData = new FormData();
       formData.append('file', file);
 
       const response = await request(
-        `${host}/api/backups/jobs/restore-upload/`,
+        `${host}/api/backups/upload/`,
         {
           method: 'POST',
           body: formData,
@@ -1363,40 +1327,26 @@ export default class API {
       );
       return response;
     } catch (e) {
-      errorNotification('Failed to upload backup archive', e);
+      errorNotification('Failed to upload backup', e);
       throw e;
     }
   }
 
-  static async cancelBackupJob(jobId) {
+  static async deleteBackup(filename) {
     try {
-      return await request(
-        `${host}/api/backups/jobs/${jobId}/cancel/`,
-        {
-          method: 'POST',
-        }
-      );
-    } catch (e) {
-      errorNotification('Failed to cancel backup job', e);
-      throw e;
-    }
-  }
-
-  static async deleteBackupJob(jobId) {
-    try {
-      await request(`${host}/api/backups/jobs/${jobId}/`, {
+      await request(`${host}/api/backups/${filename}/delete/`, {
         method: 'DELETE',
       });
     } catch (e) {
-      errorNotification('Failed to delete backup job', e);
+      errorNotification('Failed to delete backup', e);
       throw e;
     }
   }
 
-  static async downloadBackupJob(jobId) {
+  static async downloadBackup(filename) {
     try {
       const token = await API.getAuthToken();
-      const response = await fetch(`${host}/api/backups/jobs/${jobId}/download/`, {
+      const response = await fetch(`${host}/api/backups/${filename}/download/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -1408,18 +1358,24 @@ export default class API {
       }
 
       const blob = await response.blob();
-      const disposition = response.headers.get('Content-Disposition');
-      let filename = `dispatcharr-backup-${jobId}.tar.gz`;
-      if (disposition) {
-        const match = disposition.match(/filename="?([^";]+)"?/);
-        if (match) {
-          filename = match[1];
-        }
-      }
-
       return { blob, filename };
     } catch (e) {
       errorNotification('Failed to download backup', e);
+      throw e;
+    }
+  }
+
+  static async restoreBackup(filename) {
+    try {
+      const response = await request(
+        `${host}/api/backups/${filename}/restore/`,
+        {
+          method: 'POST',
+        }
+      );
+      return response;
+    } catch (e) {
+      errorNotification('Failed to restore backup', e);
       throw e;
     }
   }
