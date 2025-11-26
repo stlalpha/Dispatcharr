@@ -29,11 +29,10 @@ class BackupServicesTestCase(TestCase):
         if Path(self.temp_data_dir).exists():
             shutil.rmtree(self.temp_data_dir)
 
-    @patch('apps.backups.services.settings.BACKUP_ROOT')
-    def test_get_backup_dir_creates_directory(self, mock_backup_root):
+    @patch('apps.backups.services.settings')
+    def test_get_backup_dir_creates_directory(self, mock_settings):
         """Test that get_backup_dir creates the directory if it doesn't exist"""
-        mock_backup_root.__str__ = lambda x: self.temp_backup_dir
-        mock_backup_root.return_value = self.temp_backup_dir
+        mock_settings.BACKUP_ROOT = self.temp_backup_dir
 
         with patch('apps.backups.services.Path') as mock_path:
             mock_path_instance = MagicMock()
@@ -43,17 +42,18 @@ class BackupServicesTestCase(TestCase):
             services.get_backup_dir()
             mock_path_instance.mkdir.assert_called_once_with(parents=True, exist_ok=True)
 
-    @patch('apps.backups.services.settings.BACKUP_DATA_DIRS', [])
-    def test_get_data_dirs_with_empty_config(self):
+    @patch('apps.backups.services.settings')
+    def test_get_data_dirs_with_empty_config(self, mock_settings):
         """Test that get_data_dirs returns empty list when no dirs configured"""
+        mock_settings.BACKUP_DATA_DIRS = []
         result = services.get_data_dirs()
         self.assertEqual(result, [])
 
-    @patch('apps.backups.services.settings.BACKUP_DATA_DIRS')
-    def test_get_data_dirs_filters_nonexistent(self, mock_data_dirs):
+    @patch('apps.backups.services.settings')
+    def test_get_data_dirs_filters_nonexistent(self, mock_settings):
         """Test that get_data_dirs filters out non-existent directories"""
         nonexistent_dir = '/tmp/does-not-exist-12345'
-        mock_data_dirs.__iter__ = lambda x: iter([self.temp_data_dir, nonexistent_dir])
+        mock_settings.BACKUP_DATA_DIRS = [self.temp_data_dir, nonexistent_dir]
 
         result = services.get_data_dirs()
         self.assertEqual(len(result), 1)
