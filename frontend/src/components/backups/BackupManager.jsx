@@ -251,6 +251,7 @@ export default function BackupManager() {
                 </td>
                 <td>
                   <Group spacing="xs">
+                    {/* Download temporarily disabled
                     <Tooltip label="Download">
                       <Button
                         size="xs"
@@ -260,6 +261,7 @@ export default function BackupManager() {
                         <Download size={16} />
                       </Button>
                     </Tooltip>
+                    */}
                     <Tooltip label="Restore">
                       <Button
                         size="xs"
