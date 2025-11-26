@@ -1301,22 +1301,26 @@ export default class API {
     }
   }
 
-  static async getBackupStatus(taskId) {
+  static async getBackupStatus(taskId, token = null) {
     try {
-      const response = await request(`${host}/api/backups/status/${taskId}/`);
+      let url = `${host}/api/backups/status/${taskId}/`;
+      if (token) {
+        url += `?token=${encodeURIComponent(token)}`;
+      }
+      const response = await request(url, { auth: !token });
       return response;
     } catch (e) {
       throw e;
     }
   }
 
-  static async waitForBackupTask(taskId, onProgress, isRestore = false) {
+  static async waitForBackupTask(taskId, onProgress, token = null) {
     const pollInterval = 2000; // Poll every 2 seconds
     const maxAttempts = 300; // Max 10 minutes (300 * 2s)
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
       try {
-        const status = await API.getBackupStatus(taskId);
+        const status = await API.getBackupStatus(taskId, token);
 
         if (onProgress) {
           onProgress(status);
@@ -1328,12 +1332,6 @@ export default class API {
           throw new Error(status.error || 'Task failed');
         }
       } catch (e) {
-        // During restore, the auth token may become invalid when the DB is replaced
-        // If we get a 401, assume restore completed and reload
-        if (isRestore && (e.message?.includes('401') || e.message?.includes('Unauthorized'))) {
-          console.log('Auth invalidated during restore, assuming success...');
-          return { status: 'completed', message: 'Restore completed, please log in again' };
-        }
         throw e;
       }
 
@@ -1351,8 +1349,8 @@ export default class API {
         method: 'POST',
       });
 
-      // Wait for the task to complete
-      const result = await API.waitForBackupTask(response.task_id, onProgress);
+      // Wait for the task to complete using token for auth
+      const result = await API.waitForBackupTask(response.task_id, onProgress, response.task_token);
       return result;
     } catch (e) {
       errorNotification('Failed to create backup', e);
@@ -1422,8 +1420,9 @@ export default class API {
         }
       );
 
-      // Wait for the task to complete (isRestore=true to handle auth invalidation)
-      const result = await API.waitForBackupTask(response.task_id, onProgress, true);
+      // Wait for the task to complete using token for auth
+      // Token-based auth allows status polling even after DB restore invalidates user sessions
+      const result = await API.waitForBackupTask(response.task_id, onProgress, response.task_token);
       return result;
     } catch (e) {
       errorNotification('Failed to restore backup', e);

@@ -1,15 +1,30 @@
+import hashlib
+import hmac
 from pathlib import Path
 
 from celery.result import AsyncResult
+from django.conf import settings
 from django.http import FileResponse, Http404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, parser_classes
-from rest_framework.permissions import IsAdminUser
+from rest_framework.permissions import IsAdminUser, AllowAny
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from . import services
 from .tasks import create_backup_task, restore_backup_task
+
+
+def _generate_task_token(task_id: str) -> str:
+    """Generate a signed token for task status access without auth."""
+    secret = settings.SECRET_KEY.encode()
+    return hmac.new(secret, task_id.encode(), hashlib.sha256).hexdigest()[:32]
+
+
+def _verify_task_token(task_id: str, token: str) -> bool:
+    """Verify a task token is valid."""
+    expected = _generate_task_token(task_id)
+    return hmac.compare_digest(expected, token)
 
 
 @api_view(["GET"])
@@ -36,6 +51,7 @@ def create_backup(request):
             {
                 "detail": "Backup started",
                 "task_id": task.id,
+                "task_token": _generate_task_token(task.id),
             },
             status=status.HTTP_202_ACCEPTED,
         )
@@ -47,9 +63,30 @@ def create_backup(request):
 
 
 @api_view(["GET"])
-@permission_classes([IsAdminUser])
+@permission_classes([AllowAny])
 def backup_status(request, task_id):
-    """Check the status of a backup/restore task."""
+    """Check the status of a backup/restore task.
+
+    Requires either:
+    - Valid admin authentication, OR
+    - Valid task_token query parameter
+    """
+    # Check for token-based auth (for restore when session is invalidated)
+    token = request.query_params.get("token")
+    if token:
+        if not _verify_task_token(task_id, token):
+            return Response(
+                {"detail": "Invalid task token"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+    else:
+        # Fall back to admin auth check
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response(
+                {"detail": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
     try:
         result = AsyncResult(task_id)
 
@@ -188,6 +225,7 @@ def restore_backup(request, filename):
             {
                 "detail": "Restore started",
                 "task_id": task.id,
+                "task_token": _generate_task_token(task.id),
             },
             status=status.HTTP_202_ACCEPTED,
         )
