@@ -1389,15 +1389,26 @@ export default class API {
     }
   }
 
+  static async getDownloadToken(filename) {
+    // Get a download token from the server
+    try {
+      const response = await request(`${host}/api/backups/${encodeURIComponent(filename)}/download-token/`);
+      return response.token;
+    } catch (e) {
+      throw e;
+    }
+  }
+
   static async downloadBackup(filename) {
     try {
-      const token = await API.getAuthToken();
+      // Get a download token first
+      const token = await API.getDownloadToken(filename);
       const encodedFilename = encodeURIComponent(filename);
-      const response = await fetch(`${host}/api/backups/${encodedFilename}/download/`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+
+      // Use token in query string to avoid CORS preflight issues
+      const response = await fetch(
+        `${host}/api/backups/${encodedFilename}/download/?token=${encodeURIComponent(token)}`
+      );
 
       if (!response.ok) {
         const text = await response.text();

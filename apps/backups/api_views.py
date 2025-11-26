@@ -120,8 +120,55 @@ def backup_status(request, task_id):
 
 @api_view(["GET"])
 @permission_classes([IsAdminUser])
+def get_download_token(request, filename):
+    """Get a signed token for downloading a backup file."""
+    try:
+        # Security: prevent path traversal
+        if ".." in filename or "/" in filename or "\\" in filename:
+            raise Http404("Invalid filename")
+
+        backup_dir = services.get_backup_dir()
+        backup_file = backup_dir / filename
+
+        if not backup_file.exists():
+            raise Http404("Backup file not found")
+
+        token = _generate_task_token(filename)
+        return Response({"token": token})
+    except Http404:
+        raise
+    except Exception as e:
+        return Response(
+            {"detail": f"Failed to generate token: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([AllowAny])
 def download_backup(request, filename):
-    """Download a backup file."""
+    """Download a backup file.
+
+    Requires either:
+    - Valid admin authentication, OR
+    - Valid download_token query parameter
+    """
+    # Check for token-based auth (avoids CORS preflight issues)
+    token = request.query_params.get("token")
+    if token:
+        if not _verify_task_token(filename, token):
+            return Response(
+                {"detail": "Invalid download token"},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+    else:
+        # Fall back to admin auth check
+        if not request.user.is_authenticated or not request.user.is_staff:
+            return Response(
+                {"detail": "Authentication required"},
+                status=status.HTTP_401_UNAUTHORIZED,
+            )
+
     try:
         # Security: prevent path traversal by checking for suspicious characters
         if ".." in filename or "/" in filename or "\\" in filename:
