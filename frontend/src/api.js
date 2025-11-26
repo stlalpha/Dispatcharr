@@ -1310,21 +1310,31 @@ export default class API {
     }
   }
 
-  static async waitForBackupTask(taskId, onProgress) {
+  static async waitForBackupTask(taskId, onProgress, isRestore = false) {
     const pollInterval = 2000; // Poll every 2 seconds
     const maxAttempts = 300; // Max 10 minutes (300 * 2s)
 
     for (let attempt = 0; attempt < maxAttempts; attempt++) {
-      const status = await API.getBackupStatus(taskId);
+      try {
+        const status = await API.getBackupStatus(taskId);
 
-      if (onProgress) {
-        onProgress(status);
-      }
+        if (onProgress) {
+          onProgress(status);
+        }
 
-      if (status.state === 'completed') {
-        return status.result;
-      } else if (status.state === 'failed') {
-        throw new Error(status.error || 'Task failed');
+        if (status.state === 'completed') {
+          return status.result;
+        } else if (status.state === 'failed') {
+          throw new Error(status.error || 'Task failed');
+        }
+      } catch (e) {
+        // During restore, the auth token may become invalid when the DB is replaced
+        // If we get a 401, assume restore completed and reload
+        if (isRestore && (e.message?.includes('401') || e.message?.includes('Unauthorized'))) {
+          console.log('Auth invalidated during restore, assuming success...');
+          return { status: 'completed', message: 'Restore completed, please log in again' };
+        }
+        throw e;
       }
 
       // Wait before next poll
@@ -1412,8 +1422,8 @@ export default class API {
         }
       );
 
-      // Wait for the task to complete
-      const result = await API.waitForBackupTask(response.task_id, onProgress);
+      // Wait for the task to complete (isRestore=true to handle auth invalidation)
+      const result = await API.waitForBackupTask(response.task_id, onProgress, true);
       return result;
     } catch (e) {
       errorNotification('Failed to restore backup', e);
