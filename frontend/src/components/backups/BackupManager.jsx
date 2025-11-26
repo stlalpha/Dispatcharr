@@ -3,13 +3,19 @@ import {
   Alert,
   Badge,
   Button,
+  Card,
+  Divider,
   FileInput,
   Group,
   Loader,
   Modal,
+  NumberInput,
+  Select,
   Stack,
+  Switch,
   Table,
   Text,
+  Title,
   Tooltip,
 } from '@mantine/core';
 import {
@@ -18,6 +24,7 @@ import {
   RefreshCcw,
   UploadCloud,
   Trash2,
+  Settings,
 } from 'lucide-react';
 import { notifications } from '@mantine/notifications';
 
@@ -47,6 +54,13 @@ export default function BackupManager() {
   const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false);
   const [selectedBackup, setSelectedBackup] = useState(null);
 
+  // Settings state
+  const [scheduleEnabled, setScheduleEnabled] = useState(false);
+  const [intervalHours, setIntervalHours] = useState(24);
+  const [retentionCount, setRetentionCount] = useState(5);
+  const [settingsLoading, setSettingsLoading] = useState(false);
+  const [savingSettings, setSavingSettings] = useState(false);
+
   const loadBackups = async () => {
     setLoading(true);
     try {
@@ -63,8 +77,51 @@ export default function BackupManager() {
     }
   };
 
+  const loadSettings = async () => {
+    setSettingsLoading(true);
+    try {
+      const settings = await API.getBackupSettings();
+      setScheduleEnabled(settings.schedule_enabled || false);
+      setIntervalHours(settings.interval_hours || 24);
+      setRetentionCount(settings.retention_count || 5);
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error?.message || 'Failed to load backup settings',
+        color: 'red',
+      });
+    } finally {
+      setSettingsLoading(false);
+    }
+  };
+
+  const saveSettings = async () => {
+    setSavingSettings(true);
+    try {
+      await API.updateBackupSettings({
+        schedule_enabled: scheduleEnabled,
+        interval_hours: intervalHours,
+        retention_count: retentionCount,
+      });
+      notifications.show({
+        title: 'Success',
+        message: 'Backup settings saved successfully',
+        color: 'green',
+      });
+    } catch (error) {
+      notifications.show({
+        title: 'Error',
+        message: error?.message || 'Failed to save backup settings',
+        color: 'red',
+      });
+    } finally {
+      setSavingSettings(false);
+    }
+  };
+
   useEffect(() => {
     loadBackups();
+    loadSettings();
   }, []);
 
   const handleCreateBackup = async () => {
@@ -189,6 +246,77 @@ export default function BackupManager() {
         create button to generate a new backup, or upload an existing backup to
         restore.
       </Alert>
+
+      {/* Settings Section */}
+      <Card withBorder>
+        <Stack spacing="md">
+          <Group position="apart">
+            <Group spacing="xs">
+              <Settings size={20} />
+              <Title order={4}>Backup Settings</Title>
+            </Group>
+          </Group>
+
+          {settingsLoading ? (
+            <Group position="center" p="md">
+              <Loader size="sm" />
+            </Group>
+          ) : (
+            <>
+              <Divider />
+              <Group grow align="flex-start">
+                <Stack spacing="xs">
+                  <Switch
+                    label="Enable Scheduled Backups"
+                    description="Automatically create backups at the specified interval"
+                    checked={scheduleEnabled}
+                    onChange={(event) =>
+                      setScheduleEnabled(event.currentTarget.checked)
+                    }
+                  />
+                </Stack>
+
+                <Select
+                  label="Backup Interval"
+                  description="How often to create automatic backups"
+                  value={String(intervalHours)}
+                  onChange={(value) => setIntervalHours(Number(value))}
+                  disabled={!scheduleEnabled}
+                  data={[
+                    { value: '6', label: 'Every 6 hours' },
+                    { value: '12', label: 'Every 12 hours' },
+                    { value: '24', label: 'Daily' },
+                    { value: '48', label: 'Every 2 days' },
+                    { value: '72', label: 'Every 3 days' },
+                    { value: '168', label: 'Weekly' },
+                  ]}
+                />
+
+                <NumberInput
+                  label="Retention Count"
+                  description="Number of backups to keep (0 = unlimited)"
+                  value={retentionCount}
+                  onChange={setRetentionCount}
+                  min={0}
+                  max={100}
+                />
+              </Group>
+
+              <Group position="right">
+                <Button
+                  onClick={saveSettings}
+                  loading={savingSettings}
+                  leftIcon={<Settings size={16} />}
+                >
+                  Save Settings
+                </Button>
+              </Group>
+            </>
+          )}
+        </Stack>
+      </Card>
+
+      <Divider />
 
       <Group position="apart">
         <Text size="xl" weight={700}>

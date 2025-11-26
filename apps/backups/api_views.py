@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAdminUser
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
+from core.models import CoreSettings
 from . import services
 
 
@@ -163,5 +164,78 @@ def restore_backup(request, filename):
     except Exception as e:
         return Response(
             {"detail": f"Restore failed: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def get_backup_settings(request):
+    """Get backup schedule and retention settings."""
+    try:
+        # Get retention count
+        retention_count = CoreSettings.get_backup_retention_count()
+
+        # Get schedule status
+        schedule_status = services.get_backup_schedule_status()
+
+        return Response(
+            {
+                "retention_count": retention_count,
+                "schedule_enabled": schedule_status["enabled"],
+                "interval_hours": schedule_status["interval_hours"],
+                "next_run": schedule_status["next_run"],
+            },
+            status=status.HTTP_200_OK,
+        )
+    except Exception as e:
+        return Response(
+            {"detail": f"Failed to get backup settings: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["POST"])
+@permission_classes([IsAdminUser])
+def update_backup_settings(request):
+    """Update backup schedule and retention settings."""
+    try:
+        data = request.data
+
+        # Update retention count if provided
+        if "retention_count" in data:
+            retention_count = int(data["retention_count"])
+            if retention_count < 0:
+                return Response(
+                    {"detail": "Retention count must be >= 0"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            CoreSettings.set_backup_retention_count(retention_count)
+
+        # Update schedule if provided
+        if "schedule_enabled" in data or "interval_hours" in data:
+            schedule_enabled = data.get("schedule_enabled", False)
+            interval_hours = int(data.get("interval_hours", 24))
+
+            if interval_hours < 1:
+                return Response(
+                    {"detail": "Interval hours must be >= 1"},
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+            services.update_backup_schedule(schedule_enabled, interval_hours)
+
+        return Response(
+            {"detail": "Backup settings updated successfully"},
+            status=status.HTTP_200_OK,
+        )
+    except ValueError as e:
+        return Response(
+            {"detail": f"Invalid value: {str(e)}"},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as e:
+        return Response(
+            {"detail": f"Failed to update backup settings: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )

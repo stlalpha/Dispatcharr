@@ -1380,6 +1380,29 @@ export default class API {
     }
   }
 
+  static async getBackupSettings() {
+    try {
+      const response = await request(`${host}/api/backups/settings/`);
+      return response;
+    } catch (e) {
+      errorNotification('Failed to get backup settings', e);
+      throw e;
+    }
+  }
+
+  static async updateBackupSettings(settings) {
+    try {
+      const response = await request(`${host}/api/backups/settings/update/`, {
+        method: 'POST',
+        body: JSON.stringify(settings),
+      });
+      return response;
+    } catch (e) {
+      errorNotification('Failed to update backup settings', e);
+      throw e;
+    }
+  }
+
   static async getVersion() {
     try {
       const response = await request(`${host}/api/core/version/`, {
