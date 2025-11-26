@@ -78,15 +78,21 @@ def _dump_postgresql(output_file: Path) -> None:
 
 def _restore_postgresql(dump_file: Path) -> None:
     """Restore PostgreSQL database using pg_restore."""
-    logger.info("Restoring PostgreSQL database with pg_restore...")
+    logger.info("[PG_RESTORE] Starting pg_restore...")
+    logger.info(f"[PG_RESTORE] Dump file: {dump_file}")
+
+    pg_args = _get_pg_args()
+    logger.info(f"[PG_RESTORE] Connection args: {pg_args}")
 
     cmd = [
         "pg_restore",
         "--clean",  # Clean (drop) database objects before recreating
-        *_get_pg_args(),
+        *pg_args,
         "-v",  # Verbose
         str(dump_file),
     ]
+
+    logger.info(f"[PG_RESTORE] Running command: {' '.join(cmd)}")
 
     result = subprocess.run(
         cmd,
@@ -95,6 +101,8 @@ def _restore_postgresql(dump_file: Path) -> None:
         text=True,
     )
 
+    logger.info(f"[PG_RESTORE] Return code: {result.returncode}")
+
     # pg_restore may return non-zero even on partial success
     # Check for actual errors vs warnings
     if result.returncode != 0:
@@ -102,12 +110,12 @@ def _restore_postgresql(dump_file: Path) -> None:
         # Only fail on critical errors
         stderr = result.stderr.lower()
         if "fatal" in stderr or "could not connect" in stderr:
-            logger.error(f"pg_restore failed critically: {result.stderr}")
+            logger.error(f"[PG_RESTORE] Failed critically: {result.stderr}")
             raise RuntimeError(f"pg_restore failed: {result.stderr}")
         else:
-            logger.warning(f"pg_restore completed with warnings: {result.stderr}")
+            logger.warning(f"[PG_RESTORE] Completed with warnings: {result.stderr[:500]}...")
 
-    logger.debug(f"pg_restore output: {result.stderr}")
+    logger.info("[PG_RESTORE] Completed successfully")
 
 
 def _dump_sqlite(output_file: Path) -> None:
