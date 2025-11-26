@@ -111,25 +111,67 @@ def _restore_postgresql(dump_file: Path) -> None:
 
 
 def _dump_sqlite(output_file: Path) -> None:
-    """Copy SQLite database file."""
-    logger.info("Copying SQLite database file...")
+    """Dump SQLite database using sqlite3 .backup command."""
+    logger.info("Dumping SQLite database with sqlite3 .backup...")
     db_path = Path(settings.DATABASES["default"]["NAME"])
-    if db_path.exists():
-        shutil.copy2(db_path, output_file)
-    else:
+
+    if not db_path.exists():
         raise FileNotFoundError(f"SQLite database not found: {db_path}")
+
+    # Use sqlite3 .backup command for safe online backup
+    cmd = [
+        "sqlite3",
+        str(db_path),
+        f".backup '{output_file}'",
+    ]
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        logger.error(f"sqlite3 backup failed: {result.stderr}")
+        raise RuntimeError(f"sqlite3 backup failed: {result.stderr}")
+
+    logger.debug(f"sqlite3 backup completed successfully")
 
 
 def _restore_sqlite(dump_file: Path) -> None:
-    """Restore SQLite database by copying file."""
-    logger.info("Restoring SQLite database file...")
+    """Restore SQLite database using sqlite3 .restore command."""
+    logger.info("Restoring SQLite database with sqlite3...")
     db_path = Path(settings.DATABASES["default"]["NAME"])
+
     # Backup current database before overwriting
     if db_path.exists():
         backup_current = db_path.with_suffix(".db.bak")
         shutil.copy2(db_path, backup_current)
         logger.debug(f"Backed up current database to {backup_current}")
-    shutil.copy2(dump_file, db_path)
+
+    # Use sqlite3 .restore command for safe restore
+    # First, ensure the target database exists (create empty if needed)
+    if not db_path.exists():
+        db_path.parent.mkdir(parents=True, exist_ok=True)
+        db_path.touch()
+
+    cmd = [
+        "sqlite3",
+        str(db_path),
+        f".restore '{dump_file}'",
+    ]
+
+    result = subprocess.run(
+        cmd,
+        capture_output=True,
+        text=True,
+    )
+
+    if result.returncode != 0:
+        logger.error(f"sqlite3 restore failed: {result.stderr}")
+        raise RuntimeError(f"sqlite3 restore failed: {result.stderr}")
+
+    logger.debug(f"sqlite3 restore completed successfully")
 
 
 def create_backup() -> Path:
