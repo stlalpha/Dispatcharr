@@ -1290,6 +1290,96 @@ export default class API {
     }
   }
 
+  // Simplified Backup API (no job tracking, direct operations)
+  static async listBackups() {
+    try {
+      const response = await request(`${host}/api/backups/`);
+      return response || [];
+    } catch (e) {
+      errorNotification('Failed to load backups', e);
+      throw e;
+    }
+  }
+
+  static async createBackup() {
+    try {
+      const response = await request(`${host}/api/backups/create/`, {
+        method: 'POST',
+      });
+      return response;
+    } catch (e) {
+      errorNotification('Failed to create backup', e);
+      throw e;
+    }
+  }
+
+  static async uploadBackup(file) {
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await request(
+        `${host}/api/backups/upload/`,
+        {
+          method: 'POST',
+          body: formData,
+        }
+      );
+      return response;
+    } catch (e) {
+      errorNotification('Failed to upload backup', e);
+      throw e;
+    }
+  }
+
+  static async deleteBackup(filename) {
+    try {
+      await request(`${host}/api/backups/${filename}/delete/`, {
+        method: 'DELETE',
+      });
+    } catch (e) {
+      errorNotification('Failed to delete backup', e);
+      throw e;
+    }
+  }
+
+  static async downloadBackup(filename) {
+    try {
+      const token = await API.getAuthToken();
+      const response = await fetch(`${host}/api/backups/${filename}/download/`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Failed to download backup');
+      }
+
+      const blob = await response.blob();
+      return { blob, filename };
+    } catch (e) {
+      errorNotification('Failed to download backup', e);
+      throw e;
+    }
+  }
+
+  static async restoreBackup(filename) {
+    try {
+      const response = await request(
+        `${host}/api/backups/${filename}/restore/`,
+        {
+          method: 'POST',
+        }
+      );
+      return response;
+    } catch (e) {
+      errorNotification('Failed to restore backup', e);
+      throw e;
+    }
+  }
+
   static async getVersion() {
     try {
       const response = await request(`${host}/api/core/version/`, {
