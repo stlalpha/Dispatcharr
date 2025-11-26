@@ -1290,7 +1290,7 @@ export default class API {
     }
   }
 
-  // Simplified Backup API (no job tracking, direct operations)
+  // Backup API (async with Celery task polling)
   static async listBackups() {
     try {
       const response = await request(`${host}/api/backups/`);
@@ -1301,12 +1301,49 @@ export default class API {
     }
   }
 
-  static async createBackup() {
+  static async getBackupStatus(taskId) {
     try {
+      const response = await request(`${host}/api/backups/status/${taskId}/`);
+      return response;
+    } catch (e) {
+      throw e;
+    }
+  }
+
+  static async waitForBackupTask(taskId, onProgress) {
+    const pollInterval = 2000; // Poll every 2 seconds
+    const maxAttempts = 300; // Max 10 minutes (300 * 2s)
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+      const status = await API.getBackupStatus(taskId);
+
+      if (onProgress) {
+        onProgress(status);
+      }
+
+      if (status.state === 'completed') {
+        return status.result;
+      } else if (status.state === 'failed') {
+        throw new Error(status.error || 'Task failed');
+      }
+
+      // Wait before next poll
+      await new Promise((resolve) => setTimeout(resolve, pollInterval));
+    }
+
+    throw new Error('Task timed out');
+  }
+
+  static async createBackup(onProgress) {
+    try {
+      // Start the backup task
       const response = await request(`${host}/api/backups/create/`, {
         method: 'POST',
       });
-      return response;
+
+      // Wait for the task to complete
+      const result = await API.waitForBackupTask(response.task_id, onProgress);
+      return result;
     } catch (e) {
       errorNotification('Failed to create backup', e);
       throw e;
@@ -1365,15 +1402,19 @@ export default class API {
     }
   }
 
-  static async restoreBackup(filename) {
+  static async restoreBackup(filename, onProgress) {
     try {
+      // Start the restore task
       const response = await request(
         `${host}/api/backups/${filename}/restore/`,
         {
           method: 'POST',
         }
       );
-      return response;
+
+      // Wait for the task to complete
+      const result = await API.waitForBackupTask(response.task_id, onProgress);
+      return result;
     } catch (e) {
       errorNotification('Failed to restore backup', e);
       throw e;

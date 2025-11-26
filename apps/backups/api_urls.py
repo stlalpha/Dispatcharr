@@ -8,6 +8,7 @@ urlpatterns = [
     path("", api_views.list_backups, name="backup-list"),
     path("create/", api_views.create_backup, name="backup-create"),
     path("upload/", api_views.upload_backup, name="backup-upload"),
+    path("status/<str:task_id>/", api_views.backup_status, name="backup-status"),
     path("<str:filename>/download/", api_views.download_backup, name="backup-download"),
     path("<str:filename>/delete/", api_views.delete_backup, name="backup-delete"),
     path("<str:filename>/restore/", api_views.restore_backup, name="backup-restore"),

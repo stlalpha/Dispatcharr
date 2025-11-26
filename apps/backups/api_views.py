@@ -1,5 +1,6 @@
 from pathlib import Path
 
+from celery.result import AsyncResult
 from django.http import FileResponse, Http404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, parser_classes
@@ -8,6 +9,7 @@ from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework.response import Response
 
 from . import services
+from .tasks import create_backup_task, restore_backup_task
 
 
 @api_view(["GET"])
@@ -27,20 +29,54 @@ def list_backups(request):
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def create_backup(request):
-    """Create a new backup."""
+    """Create a new backup (async via Celery)."""
     try:
-        backup_file = services.create_backup()
+        task = create_backup_task.delay()
         return Response(
             {
-                "detail": "Backup created successfully",
-                "filename": backup_file.name,
-                "size": backup_file.stat().st_size,
+                "detail": "Backup started",
+                "task_id": task.id,
             },
-            status=status.HTTP_201_CREATED,
+            status=status.HTTP_202_ACCEPTED,
         )
     except Exception as e:
         return Response(
-            {"detail": f"Backup failed: {str(e)}"},
+            {"detail": f"Failed to start backup: {str(e)}"},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        )
+
+
+@api_view(["GET"])
+@permission_classes([IsAdminUser])
+def backup_status(request, task_id):
+    """Check the status of a backup/restore task."""
+    try:
+        result = AsyncResult(task_id)
+
+        if result.ready():
+            task_result = result.get()
+            if task_result.get("status") == "completed":
+                return Response({
+                    "state": "completed",
+                    "result": task_result,
+                })
+            else:
+                return Response({
+                    "state": "failed",
+                    "error": task_result.get("error", "Unknown error"),
+                })
+        elif result.failed():
+            return Response({
+                "state": "failed",
+                "error": str(result.result),
+            })
+        else:
+            return Response({
+                "state": result.state.lower(),
+            })
+    except Exception as e:
+        return Response(
+            {"detail": f"Failed to get task status: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
 
@@ -139,7 +175,7 @@ def upload_backup(request):
 @api_view(["POST"])
 @permission_classes([IsAdminUser])
 def restore_backup(request, filename):
-    """Restore from a backup file. WARNING: This will flush the database!"""
+    """Restore from a backup file (async via Celery). WARNING: This will flush the database!"""
     try:
         backup_dir = services.get_backup_dir()
         backup_file = backup_dir / filename
@@ -147,21 +183,18 @@ def restore_backup(request, filename):
         if not backup_file.exists():
             raise Http404("Backup file not found")
 
-        services.restore_backup(backup_file)
-
+        task = restore_backup_task.delay(filename)
         return Response(
-            {"detail": "Backup restored successfully"},
-            status=status.HTTP_200_OK,
+            {
+                "detail": "Restore started",
+                "task_id": task.id,
+            },
+            status=status.HTTP_202_ACCEPTED,
         )
     except Http404:
         raise
-    except ValueError as e:
-        return Response(
-            {"detail": str(e)},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
     except Exception as e:
         return Response(
-            {"detail": f"Restore failed: {str(e)}"},
+            {"detail": f"Failed to start restore: {str(e)}"},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR,
         )
