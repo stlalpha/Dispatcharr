@@ -123,8 +123,16 @@ def backup_status(request, task_id):
 def download_backup(request, filename):
     """Download a backup file."""
     try:
+        # Security: prevent path traversal by checking for suspicious characters
+        if ".." in filename or "/" in filename or "\\" in filename:
+            raise Http404("Invalid filename")
+
         backup_dir = services.get_backup_dir()
-        backup_file = backup_dir / filename
+        backup_file = (backup_dir / filename).resolve()
+
+        # Security: ensure the resolved path is still within backup_dir
+        if not str(backup_file).startswith(str(backup_dir.resolve())):
+            raise Http404("Invalid filename")
 
         if not backup_file.exists() or not backup_file.is_file():
             raise Http404("Backup file not found")
@@ -149,6 +157,10 @@ def download_backup(request, filename):
 def delete_backup(request, filename):
     """Delete a backup file."""
     try:
+        # Security: prevent path traversal
+        if ".." in filename or "/" in filename or "\\" in filename:
+            raise Http404("Invalid filename")
+
         services.delete_backup(filename)
         return Response(
             {"detail": "Backup deleted successfully"},
@@ -214,6 +226,10 @@ def upload_backup(request):
 def restore_backup(request, filename):
     """Restore from a backup file (async via Celery). WARNING: This will flush the database!"""
     try:
+        # Security: prevent path traversal
+        if ".." in filename or "/" in filename or "\\" in filename:
+            raise Http404("Invalid filename")
+
         backup_dir = services.get_backup_dir()
         backup_file = backup_dir / filename
 

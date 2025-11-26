@@ -1379,7 +1379,8 @@ export default class API {
 
   static async deleteBackup(filename) {
     try {
-      await request(`${host}/api/backups/${filename}/delete/`, {
+      const encodedFilename = encodeURIComponent(filename);
+      await request(`${host}/api/backups/${encodedFilename}/delete/`, {
         method: 'DELETE',
       });
     } catch (e) {
@@ -1391,7 +1392,8 @@ export default class API {
   static async downloadBackup(filename) {
     try {
       const token = await API.getAuthToken();
-      const response = await fetch(`${host}/api/backups/${filename}/download/`, {
+      const encodedFilename = encodeURIComponent(filename);
+      const response = await fetch(`${host}/api/backups/${encodedFilename}/download/`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -1413,8 +1415,9 @@ export default class API {
   static async restoreBackup(filename, onProgress) {
     try {
       // Start the restore task
+      const encodedFilename = encodeURIComponent(filename);
       const response = await request(
-        `${host}/api/backups/${filename}/restore/`,
+        `${host}/api/backups/${encodedFilename}/restore/`,
         {
           method: 'POST',
         }
