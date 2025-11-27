@@ -4,7 +4,7 @@ from pathlib import Path
 
 from celery.result import AsyncResult
 from django.conf import settings
-from django.http import FileResponse, Http404
+from django.http import StreamingHttpResponse, Http404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAdminUser, AllowAny
@@ -184,11 +184,20 @@ def download_backup(request, filename):
         if not backup_file.exists() or not backup_file.is_file():
             raise Http404("Backup file not found")
 
-        response = FileResponse(
-            open(backup_file, "rb"),
-            as_attachment=True,
-            filename=filename,
+        # Stream file in chunks to avoid sendfile timeout issues
+        # Works across all deployment scenarios (AIO, dev, etc.)
+        def file_iterator(file_path, chunk_size=8192):
+            with open(file_path, "rb") as f:
+                while chunk := f.read(chunk_size):
+                    yield chunk
+
+        file_size = backup_file.stat().st_size
+        response = StreamingHttpResponse(
+            file_iterator(backup_file),
+            content_type="application/zip",
         )
+        response["Content-Length"] = file_size
+        response["Content-Disposition"] = f'attachment; filename="{filename}"'
         return response
     except Http404:
         raise
