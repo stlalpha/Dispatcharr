@@ -1401,22 +1401,23 @@ export default class API {
 
   static async downloadBackup(filename) {
     try {
-      // Get a download token first
+      // Get a download token first (requires auth)
       const token = await API.getDownloadToken(filename);
       const encodedFilename = encodeURIComponent(filename);
 
-      // Use token in query string to avoid CORS preflight issues
-      const response = await fetch(
-        `${host}/api/backups/${encodedFilename}/download/?token=${encodeURIComponent(token)}`
-      );
+      // Build the download URL with token
+      const downloadUrl = `${host}/api/backups/${encodedFilename}/download/?token=${encodeURIComponent(token)}`;
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Failed to download backup');
-      }
+      // Use direct browser navigation instead of fetch to avoid CORS issues
+      // This is the standard pattern for file downloads in web apps
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
 
-      const blob = await response.blob();
-      return { blob, filename };
+      return { filename };
     } catch (e) {
       errorNotification('Failed to download backup', e);
       throw e;

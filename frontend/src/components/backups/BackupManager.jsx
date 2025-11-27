@@ -90,15 +90,8 @@ export default function BackupManager() {
 
   const handleDownload = async (filename) => {
     try {
-      const { blob } = await API.downloadBackup(filename);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      // API.downloadBackup now handles the download via direct browser navigation
+      await API.downloadBackup(filename);
     } catch (error) {
       notifications.show({
         title: 'Error',
@@ -251,7 +244,6 @@ export default function BackupManager() {
                 </td>
                 <td>
                   <Group spacing="xs">
-                    {/* Download temporarily disabled
                     <Tooltip label="Download">
                       <Button
                         size="xs"
@@ -261,7 +253,6 @@ export default function BackupManager() {
                         <Download size={16} />
                       </Button>
                     </Tooltip>
-                    */}
                     <Tooltip label="Restore">
                       <Button
                         size="xs"
