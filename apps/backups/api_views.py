@@ -1,5 +1,6 @@
 import hashlib
 import hmac
+import logging
 import os
 from pathlib import Path
 
@@ -14,6 +15,8 @@ from rest_framework.response import Response
 
 from . import services
 from .tasks import create_backup_task, restore_backup_task
+
+logger = logging.getLogger(__name__)
 
 
 def _generate_task_token(task_id: str) -> str:
@@ -190,9 +193,11 @@ def download_backup(request, filename):
         # Use X-Accel-Redirect for nginx (AIO container) - nginx serves file directly
         # Fall back to streaming for non-nginx deployments
         use_nginx_accel = os.environ.get("USE_NGINX_ACCEL", "").lower() == "true"
+        logger.info(f"[DOWNLOAD] File: {filename}, Size: {file_size}, USE_NGINX_ACCEL: {use_nginx_accel}")
 
         if use_nginx_accel:
             # X-Accel-Redirect: Django returns immediately, nginx serves file
+            logger.info(f"[DOWNLOAD] Using X-Accel-Redirect: /protected-backups/{filename}")
             response = HttpResponse()
             response["X-Accel-Redirect"] = f"/protected-backups/{filename}"
             response["Content-Type"] = "application/zip"
@@ -201,6 +206,7 @@ def download_backup(request, filename):
             return response
         else:
             # Streaming fallback for non-nginx deployments
+            logger.info(f"[DOWNLOAD] Using streaming fallback (no nginx)")
             def file_iterator(file_path, chunk_size=2 * 1024 * 1024):
                 with open(file_path, "rb") as f:
                     while chunk := f.read(chunk_size):
