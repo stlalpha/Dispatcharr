@@ -41,6 +41,7 @@ export default function BackupManager() {
   const [backups, setBackups] = useState([]);
   const [loading, setLoading] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [downloading, setDownloading] = useState(null);
   const [uploadFile, setUploadFile] = useState(null);
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
   const [restoreConfirmOpen, setRestoreConfirmOpen] = useState(false);
@@ -89,15 +90,23 @@ export default function BackupManager() {
   };
 
   const handleDownload = async (filename) => {
+    setDownloading(filename);
     try {
       // API.downloadBackup now handles the download via direct browser navigation
       await API.downloadBackup(filename);
+      notifications.show({
+        title: 'Download Started',
+        message: `Downloading ${filename}...`,
+        color: 'blue',
+      });
     } catch (error) {
       notifications.show({
         title: 'Error',
         message: error?.message || 'Failed to download backup',
         color: 'red',
       });
+    } finally {
+      setDownloading(null);
     }
   };
 
@@ -249,6 +258,8 @@ export default function BackupManager() {
                         size="xs"
                         variant="light"
                         onClick={() => handleDownload(backup.name)}
+                        loading={downloading === backup.name}
+                        disabled={downloading !== null}
                       >
                         <Download size={16} />
                       </Button>
