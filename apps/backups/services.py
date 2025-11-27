@@ -126,15 +126,10 @@ def _dump_sqlite(output_file: Path) -> None:
     if not db_path.exists():
         raise FileNotFoundError(f"SQLite database not found: {db_path}")
 
-    # Use sqlite3 .backup command for safe online backup
-    cmd = [
-        "sqlite3",
-        str(db_path),
-        f".backup '{output_file}'",
-    ]
-
+    # Use sqlite3 .backup command via stdin for reliable execution
     result = subprocess.run(
-        cmd,
+        ["sqlite3", str(db_path)],
+        input=f".backup '{output_file}'\n",
         capture_output=True,
         text=True,
     )
@@ -143,43 +138,49 @@ def _dump_sqlite(output_file: Path) -> None:
         logger.error(f"sqlite3 backup failed: {result.stderr}")
         raise RuntimeError(f"sqlite3 backup failed: {result.stderr}")
 
-    logger.debug(f"sqlite3 backup completed successfully")
+    # Verify the backup file was created
+    if not output_file.exists():
+        raise RuntimeError("sqlite3 backup failed: output file not created")
+
+    logger.info(f"sqlite3 backup completed successfully: {output_file}")
 
 
 def _restore_sqlite(dump_file: Path) -> None:
-    """Restore SQLite database using sqlite3 .restore command."""
-    logger.info("Restoring SQLite database with sqlite3...")
+    """Restore SQLite database by replacing the database file."""
+    logger.info("Restoring SQLite database...")
     db_path = Path(settings.DATABASES["default"]["NAME"])
+    backup_current = None
 
     # Backup current database before overwriting
     if db_path.exists():
         backup_current = db_path.with_suffix(".db.bak")
         shutil.copy2(db_path, backup_current)
-        logger.debug(f"Backed up current database to {backup_current}")
+        logger.info(f"Backed up current database to {backup_current}")
 
-    # Use sqlite3 .restore command for safe restore
-    # First, ensure the target database exists (create empty if needed)
-    if not db_path.exists():
-        db_path.parent.mkdir(parents=True, exist_ok=True)
-        db_path.touch()
+    # Ensure parent directory exists
+    db_path.parent.mkdir(parents=True, exist_ok=True)
 
-    cmd = [
-        "sqlite3",
-        str(db_path),
-        f".restore '{dump_file}'",
-    ]
+    # The backup file from _dump_sqlite is a complete SQLite database file
+    # We can simply copy it over the existing database
+    shutil.copy2(dump_file, db_path)
 
+    # Verify the restore worked by checking if sqlite3 can read it
     result = subprocess.run(
-        cmd,
+        ["sqlite3", str(db_path)],
+        input=".tables\n",
         capture_output=True,
         text=True,
     )
 
     if result.returncode != 0:
-        logger.error(f"sqlite3 restore failed: {result.stderr}")
-        raise RuntimeError(f"sqlite3 restore failed: {result.stderr}")
+        logger.error(f"sqlite3 verification failed: {result.stderr}")
+        # Try to restore from backup
+        if backup_current and backup_current.exists():
+            shutil.copy2(backup_current, db_path)
+            logger.info("Restored original database from backup")
+        raise RuntimeError(f"sqlite3 restore verification failed: {result.stderr}")
 
-    logger.debug(f"sqlite3 restore completed successfully")
+    logger.info("sqlite3 restore completed successfully")
 
 
 def create_backup() -> Path:
