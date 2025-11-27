@@ -1,10 +1,11 @@
 import hashlib
 import hmac
+import os
 from pathlib import Path
 
 from celery.result import AsyncResult
 from django.conf import settings
-from django.http import StreamingHttpResponse, Http404
+from django.http import HttpResponse, StreamingHttpResponse, Http404
 from rest_framework import status
 from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.permissions import IsAdminUser, AllowAny
@@ -184,21 +185,34 @@ def download_backup(request, filename):
         if not backup_file.exists() or not backup_file.is_file():
             raise Http404("Backup file not found")
 
-        # Stream file in chunks to avoid sendfile timeout issues
-        # Works across all deployment scenarios (AIO, dev, etc.)
-        def file_iterator(file_path, chunk_size=8192):
-            with open(file_path, "rb") as f:
-                while chunk := f.read(chunk_size):
-                    yield chunk
-
         file_size = backup_file.stat().st_size
-        response = StreamingHttpResponse(
-            file_iterator(backup_file),
-            content_type="application/zip",
-        )
-        response["Content-Length"] = file_size
-        response["Content-Disposition"] = f'attachment; filename="{filename}"'
-        return response
+
+        # Use X-Accel-Redirect for nginx (AIO container) - nginx serves file directly
+        # Fall back to streaming for non-nginx deployments
+        use_nginx_accel = os.environ.get("USE_NGINX_ACCEL", "").lower() == "true"
+
+        if use_nginx_accel:
+            # X-Accel-Redirect: Django returns immediately, nginx serves file
+            response = HttpResponse()
+            response["X-Accel-Redirect"] = f"/protected-backups/{filename}"
+            response["Content-Type"] = "application/zip"
+            response["Content-Length"] = file_size
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
+        else:
+            # Streaming fallback for non-nginx deployments
+            def file_iterator(file_path, chunk_size=2 * 1024 * 1024):
+                with open(file_path, "rb") as f:
+                    while chunk := f.read(chunk_size):
+                        yield chunk
+
+            response = StreamingHttpResponse(
+                file_iterator(backup_file),
+                content_type="application/zip",
+            )
+            response["Content-Length"] = file_size
+            response["Content-Disposition"] = f'attachment; filename="{filename}"'
+            return response
     except Http404:
         raise
     except Exception as e:

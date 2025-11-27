@@ -135,6 +135,8 @@ else
     nginx_pid=$(pgrep nginx | sort  | head -n1)
     echo "✅ nginx started with PID $nginx_pid"
     pids+=("$nginx_pid")
+    # Enable X-Accel-Redirect for efficient file downloads
+    export USE_NGINX_ACCEL=true
 fi
 
 cd /app
