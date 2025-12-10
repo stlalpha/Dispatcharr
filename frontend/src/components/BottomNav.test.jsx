@@ -48,10 +48,10 @@ describe('BottomNav', () => {
     window.matchMedia = originalMatchMedia;
   });
 
-  it('should render on mobile viewports (< 768px)', () => {
+  it('should render on mobile viewports when authenticated', () => {
     window.matchMedia = createMatchMediaMock(400); // Mobile viewport
 
-    renderWithProviders(<BottomNav />);
+    renderWithProviders(<BottomNav isAuthenticated={true} />);
 
     // Should render bottom navigation
     expect(screen.getByText('Channels')).toBeInTheDocument();
@@ -60,10 +60,19 @@ describe('BottomNav', () => {
     expect(screen.getByText('Settings')).toBeInTheDocument();
   });
 
+  it('should NOT render when not authenticated', () => {
+    window.matchMedia = createMatchMediaMock(400); // Mobile viewport
+
+    renderWithProviders(<BottomNav isAuthenticated={false} />);
+
+    // Should not render
+    expect(screen.queryByText('Channels')).not.toBeInTheDocument();
+  });
+
   it('should NOT render on desktop viewports (>= 1024px)', () => {
     window.matchMedia = createMatchMediaMock(1400); // Desktop viewport
 
-    renderWithProviders(<BottomNav />);
+    renderWithProviders(<BottomNav isAuthenticated={true} />);
 
     // Should not render anything
     expect(screen.queryByText('Channels')).not.toBeInTheDocument();
@@ -73,7 +82,7 @@ describe('BottomNav', () => {
   it('should NOT render on tablet viewports (768-1024px)', () => {
     window.matchMedia = createMatchMediaMock(900); // Tablet viewport
 
-    renderWithProviders(<BottomNav />);
+    renderWithProviders(<BottomNav isAuthenticated={true} />);
 
     // Should not render on tablet
     expect(screen.queryByText('Channels')).not.toBeInTheDocument();
@@ -82,7 +91,7 @@ describe('BottomNav', () => {
   it('should have correct navigation links', () => {
     window.matchMedia = createMatchMediaMock(400);
 
-    renderWithProviders(<BottomNav />);
+    renderWithProviders(<BottomNav isAuthenticated={true} />);
 
     const channelsLink = screen.getByText('Channels').closest('a');
     const guideLink = screen.getByText('Guide').closest('a');
@@ -98,7 +107,7 @@ describe('BottomNav', () => {
   it('should render all 4 quick link icons', () => {
     window.matchMedia = createMatchMediaMock(400);
 
-    renderWithProviders(<BottomNav />);
+    renderWithProviders(<BottomNav isAuthenticated={true} />);
 
     // Verify all labels are present
     expect(screen.getByText('Channels')).toBeInTheDocument();

@@ -70,7 +70,7 @@ const NavLink = ({ item, isActive, collapsed }) => {
   );
 };
 
-const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
+const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth, isMobile = false, closeMobileMenu = () => {} }) => {
   const location = useLocation();
 
   const channels = useChannelsStore((s) => s.channels);
@@ -175,6 +175,13 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
     fetchVersion();
   }, []);
 
+  // Auto-close mobile menu on navigation
+  useEffect(() => {
+    if (isMobile && !collapsed) {
+      closeMobileMenu();
+    }
+  }, [location.pathname, isMobile, closeMobileMenu, collapsed]);
+
   const copyPublicIP = async () => {
     const success = await copyToClipboard(environment.public_ip);
     if (success) {
@@ -196,7 +203,7 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
   return (
     <AppShell.Navbar
       width={{ base: collapsed ? miniDrawerWidth : drawerWidth }}
-      p="xs"
+      p={isMobile ? 'md' : 'xs'}
       style={{
         backgroundColor: '#1A1A1E',
         // transition: 'width 0.3s ease',
@@ -206,12 +213,12 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
         flexDirection: 'column',
       }}
     >
-      {/* Brand - Click to Toggle */}
+      {/* Brand - Click to Toggle (desktop only, mobile uses hamburger) */}
       <Group
-        onClick={toggleDrawer}
+        onClick={isMobile ? undefined : toggleDrawer}
         spacing="sm"
         style={{
-          cursor: 'pointer',
+          cursor: isMobile ? 'default' : 'pointer',
           display: 'flex',
           alignItems: 'center',
           gap: 12,
@@ -271,7 +278,8 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
       >
         {isAuthenticated && (
           <Group>
-            {!collapsed && (
+            {/* Hide public IP on mobile to save space */}
+            {!collapsed && !isMobile && (
               <TextInput
                 label="Public IP"
                 ref={publicIPRef}

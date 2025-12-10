@@ -22,7 +22,7 @@ import useAuthStore from './store/auth';
 import useLogosStore from './store/logos';
 import FloatingVideo from './components/FloatingVideo';
 import { WebsocketProvider } from './WebSocket';
-import { Box, AppShell, MantineProvider } from '@mantine/core';
+import { Box, AppShell, MantineProvider, Burger, Flex, Text, Group } from '@mantine/core';
 import '@mantine/core/styles.css'; // Ensure Mantine global styles load
 import '@mantine/notifications/styles.css';
 import '@mantine/dropzone/styles.css';
@@ -33,15 +33,20 @@ import API from './api';
 import { Notifications } from '@mantine/notifications';
 import M3URefreshNotification from './components/M3URefreshNotification';
 import 'allotment/dist/style.css';
+import { useResponsive } from './hooks/useResponsive';
+import { BottomNav } from './components/BottomNav';
+import logo from './logo.svg';
 
 const drawerWidth = 240;
 const miniDrawerWidth = 60;
 const defaultRoute = '/channels';
 
 const App = () => {
-  const [open, setOpen] = useState(true);
+  const [open, setOpen] = useState(true); // Desktop sidebar state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile drawer state
   const [backgroundLoadingStarted, setBackgroundLoadingStarted] =
     useState(false);
+  const { isMobile } = useResponsive();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const setIsAuthenticated = useAuthStore((s) => s.setIsAuthenticated);
   const logout = useAuthStore((s) => s.logout);
@@ -50,7 +55,17 @@ const App = () => {
   const setSuperuserExists = useAuthStore((s) => s.setSuperuserExists);
 
   const toggleDrawer = () => {
-    setOpen(!open);
+    if (isMobile) {
+      setMobileMenuOpen(!mobileMenuOpen);
+    } else {
+      setOpen(!open);
+    }
+  };
+
+  const closeMobileMenu = () => {
+    if (isMobile) {
+      setMobileMenuOpen(false);
+    }
   };
 
   // Check if a superuser exists on first load.
@@ -109,17 +124,49 @@ const App = () => {
         <Router>
           <AppShell
             header={{
-              height: 0,
+              height: isMobile ? 60 : 0,
             }}
             navbar={{
-              width: open ? drawerWidth : miniDrawerWidth,
+              width: isMobile ? '85%' : (open ? drawerWidth : miniDrawerWidth),
+              breakpoint: 'sm',
+              collapsed: { mobile: !mobileMenuOpen },
             }}
           >
+            {/* Mobile Header - always visible on mobile, hamburger only when authenticated */}
+            {isMobile && (
+              <AppShell.Header
+                style={{
+                  backgroundColor: '#1A1A1E',
+                  borderBottom: '1px solid #2A2A2E',
+                }}
+              >
+                <Flex h="100%" px="md" justify="space-between" align="center">
+                  {isAuthenticated ? (
+                    <Burger
+                      opened={mobileMenuOpen}
+                      onClick={toggleDrawer}
+                      aria-label="Toggle navigation"
+                      color="white"
+                    />
+                  ) : (
+                    <Box w={40} /> // Spacer when not authenticated
+                  )}
+                  <Group gap="xs">
+                    <img width={24} src={logo} alt="Dispatcharr" />
+                    <Text fw={600} size="lg" c="white">Dispatcharr</Text>
+                  </Group>
+                  <Box w={40} /> {/* Spacer for visual balance */}
+                </Flex>
+              </AppShell.Header>
+            )}
+
             <Sidebar
-              drawerWidth
-              miniDrawerWidth
-              collapsed={!open}
+              drawerWidth={drawerWidth}
+              miniDrawerWidth={miniDrawerWidth}
+              collapsed={isMobile ? !mobileMenuOpen : !open}
               toggleDrawer={toggleDrawer}
+              isMobile={isMobile}
+              closeMobileMenu={closeMobileMenu}
             />
 
             <AppShell.Main>
@@ -129,11 +176,13 @@ const App = () => {
                   flexDirection: 'column',
                   // transition: 'margin-left 0.3s',
                   backgroundColor: '#18181b',
-                  height: '100vh',
+                  minHeight: '100vh',
+                  paddingTop: isMobile ? '60px' : 0,
+                  paddingBottom: isMobile ? '60px' : 0, // Account for bottom nav
                   color: 'white',
                 }}
               >
-                <Box sx={{ p: 2, flex: 1, overflow: 'auto' }}>
+                <Box sx={{ p: isMobile ? 1 : 2, flex: 1, overflow: 'auto' }}>
                   <Routes>
                     {isAuthenticated ? (
                       <>
@@ -167,6 +216,7 @@ const App = () => {
           </AppShell>
           <M3URefreshNotification />
           <Notifications containerWidth={350} />
+          <BottomNav isAuthenticated={isAuthenticated} />
         </Router>
       </WebsocketProvider>
 

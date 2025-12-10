@@ -6,14 +6,15 @@ import { useResponsive } from '../hooks/useResponsive';
 /**
  * Bottom Navigation Bar for Mobile
  * Shows quick links to 4 primary pages on mobile devices only
+ * Only visible when user is authenticated
  * 2025 production pattern: Drawer for all nav, bottom bar for quick access
  */
-export const BottomNav = () => {
+export const BottomNav = ({ isAuthenticated = false }) => {
   const { isMobile } = useResponsive();
   const location = useLocation();
 
-  // Only show on mobile (< 768px)
-  if (!isMobile) return null;
+  // Only show on mobile (< 768px) and when authenticated
+  if (!isMobile || !isAuthenticated) return null;
 
   const quickLinks = [
     { path: '/channels', icon: ListOrdered, label: 'Channels' },

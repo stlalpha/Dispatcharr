@@ -2,8 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import useAuthStore from '../../store/auth';
 import { Paper, Title, TextInput, Button, Center, Stack } from '@mantine/core';
+import { useResponsive } from '../../hooks/useResponsive';
 
 const LoginForm = () => {
+  const { isMobile } = useResponsive();
   const login = useAuthStore((s) => s.login);
   const logout = useAuthStore((s) => s.logout);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -40,12 +42,20 @@ const LoginForm = () => {
   return (
     <Center
       style={{
-        height: '100vh',
+        height: isMobile ? 'calc(100vh - 60px)' : '100vh',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
       }}
     >
       <Paper
         elevation={3}
-        style={{ padding: 30, width: '100%', maxWidth: 400 }}
+        style={{
+          padding: isMobile ? 20 : 30,
+          width: '100%',
+          maxWidth: 400,
+          margin: isMobile ? '0 16px' : 0,
+        }}
       >
         <Title order={4} align="center">
           Login
