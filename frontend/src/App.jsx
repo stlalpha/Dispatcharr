@@ -35,7 +35,7 @@ import M3URefreshNotification from './components/M3URefreshNotification';
 import 'allotment/dist/style.css';
 import { useResponsive } from './hooks/useResponsive';
 import { BottomNav } from './components/BottomNav';
-import logo from './logo.svg';
+import logo from './images/logo.png';
 
 const drawerWidth = 240;
 const miniDrawerWidth = 60;
@@ -138,24 +138,31 @@ const App = () => {
                 style={{
                   backgroundColor: '#1A1A1E',
                   borderBottom: '1px solid #2A2A2E',
+                  zIndex: 100,
                 }}
               >
-                <Flex h="100%" px="md" justify="space-between" align="center">
+                <Flex
+                  h={60}
+                  px="md"
+                  justify="space-between"
+                  align="center"
+                  style={{ width: '100%' }}
+                >
                   {isAuthenticated ? (
                     <Burger
                       opened={mobileMenuOpen}
                       onClick={toggleDrawer}
                       aria-label="Toggle navigation"
-                      color="white"
+                      size="sm"
                     />
                   ) : (
-                    <Box w={40} /> // Spacer when not authenticated
+                    <Box style={{ width: 40 }} />
                   )}
                   <Group gap="xs">
-                    <img width={24} src={logo} alt="Dispatcharr" />
-                    <Text fw={600} size="lg" c="white">Dispatcharr</Text>
+                    <img width={24} height={24} src={logo} alt="Dispatcharr" style={{ objectFit: 'contain' }} />
+                    <Text fw={600} size="lg" style={{ color: 'white' }}>Dispatcharr</Text>
                   </Group>
-                  <Box w={40} /> {/* Spacer for visual balance */}
+                  <Box style={{ width: 40 }} />
                 </Flex>
               </AppShell.Header>
             )}
@@ -177,8 +184,8 @@ const App = () => {
                   // transition: 'margin-left 0.3s',
                   backgroundColor: '#18181b',
                   minHeight: '100vh',
-                  paddingTop: isMobile ? '60px' : 0,
-                  paddingBottom: isMobile ? '60px' : 0, // Account for bottom nav
+                  paddingTop: (isMobile && isAuthenticated) ? '60px' : 0,
+                  paddingBottom: (isMobile && isAuthenticated) ? '60px' : 0, // Account for bottom nav
                   color: 'white',
                 }}
               >

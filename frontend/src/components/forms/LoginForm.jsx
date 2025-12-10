@@ -42,7 +42,7 @@ const LoginForm = () => {
   return (
     <Center
       style={{
-        height: isMobile ? 'calc(100vh - 60px)' : '100vh',
+        height: '100vh',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
