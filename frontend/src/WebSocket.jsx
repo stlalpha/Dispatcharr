@@ -61,8 +61,11 @@ export const WebsocketProvider = ({ children }) => {
     const host = window.location.hostname;
     const appPort = window.location.port;
 
-    // In development mode, connect directly to the WebSocket server on port 8001
-    if (env_mode === 'dev') {
+    // In development mode (Vite dev server), connect to Django WebSocket on port 8001
+    const isDev = import.meta.env.DEV;
+    console.log('WebSocket env check - isDev:', isDev, 'env_mode:', env_mode, 'appPort:', appPort);
+
+    if (isDev || env_mode === 'dev') {
       return `${protocol}//${host}:8001/ws/?token=${accessToken}`;
     } else {
       // In production mode, use the same port as the main application

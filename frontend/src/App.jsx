@@ -22,7 +22,7 @@ import useAuthStore from './store/auth';
 import useLogosStore from './store/logos';
 import FloatingVideo from './components/FloatingVideo';
 import { WebsocketProvider } from './WebSocket';
-import { Box, AppShell, MantineProvider, Burger, Flex, Text, Group } from '@mantine/core';
+import { Box, AppShell, MantineProvider, Burger, Flex, Text, Group, UnstyledButton } from '@mantine/core';
 import '@mantine/core/styles.css'; // Ensure Mantine global styles load
 import '@mantine/notifications/styles.css';
 import '@mantine/dropzone/styles.css';
@@ -47,6 +47,10 @@ const App = () => {
   const [backgroundLoadingStarted, setBackgroundLoadingStarted] =
     useState(false);
   const { isMobile } = useResponsive();
+
+  useEffect(() => {
+    console.log('mobileMenuOpen state changed to:', mobileMenuOpen);
+  }, [mobileMenuOpen]);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const setIsAuthenticated = useAuthStore((s) => s.setIsAuthenticated);
   const logout = useAuthStore((s) => s.logout);
@@ -55,15 +59,19 @@ const App = () => {
   const setSuperuserExists = useAuthStore((s) => s.setSuperuserExists);
 
   const toggleDrawer = () => {
+    console.log('toggleDrawer called, isMobile:', isMobile, 'mobileMenuOpen:', mobileMenuOpen);
     if (isMobile) {
       setMobileMenuOpen(!mobileMenuOpen);
+      console.log('Setting mobileMenuOpen to:', !mobileMenuOpen);
     } else {
       setOpen(!open);
     }
   };
 
   const closeMobileMenu = () => {
+    console.log('closeMobileMenu called! isMobile:', isMobile);
     if (isMobile) {
+      console.log('Closing mobile menu');
       setMobileMenuOpen(false);
     }
   };
@@ -131,6 +139,7 @@ const App = () => {
               breakpoint: 'sm',
               collapsed: { mobile: !mobileMenuOpen },
             }}
+            onNavbarCollapse={(collapsed) => console.log('Navbar collapsed state changed:', collapsed)}
           >
             {/* Mobile Header - always visible on mobile, hamburger only when authenticated */}
             {isMobile && (
@@ -138,7 +147,7 @@ const App = () => {
                 style={{
                   backgroundColor: '#1A1A1E',
                   borderBottom: '1px solid #2A2A2E',
-                  zIndex: 100,
+                  zIndex: 1000,
                 }}
               >
                 <Flex
@@ -151,9 +160,17 @@ const App = () => {
                   {isAuthenticated ? (
                     <Burger
                       opened={mobileMenuOpen}
-                      onClick={toggleDrawer}
-                      aria-label="Toggle navigation"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        console.log('Hamburger clicked!');
+                        toggleDrawer();
+                      }}
                       size="sm"
+                      style={{
+                        position: 'relative',
+                        zIndex: 10000,
+                        cursor: 'pointer',
+                      }}
                     />
                   ) : (
                     <Box style={{ width: 40 }} />
@@ -184,7 +201,7 @@ const App = () => {
                   // transition: 'margin-left 0.3s',
                   backgroundColor: '#18181b',
                   minHeight: '100vh',
-                  paddingTop: (isMobile && isAuthenticated) ? '60px' : 0,
+                  paddingTop: isMobile ? '60px' : 0,
                   paddingBottom: (isMobile && isAuthenticated) ? '60px' : 0, // Account for bottom nav
                   color: 'white',
                 }}

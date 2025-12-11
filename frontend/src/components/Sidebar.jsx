@@ -175,11 +175,13 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth, isMobi
     fetchVersion();
   }, []);
 
-  // Auto-close mobile menu on navigation
+  // Auto-close mobile menu on navigation (only when pathname changes, not when menu opens)
+  const prevPathnameRef = useRef(location.pathname);
   useEffect(() => {
-    if (isMobile && !collapsed) {
+    if (isMobile && !collapsed && location.pathname !== prevPathnameRef.current) {
       closeMobileMenu();
     }
+    prevPathnameRef.current = location.pathname;
   }, [location.pathname, isMobile, closeMobileMenu, collapsed]);
 
   const copyPublicIP = async () => {

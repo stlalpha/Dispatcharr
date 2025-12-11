@@ -15,6 +15,7 @@ import {
   UnstyledButton,
   useMantineTheme,
 } from '@mantine/core';
+import { useResponsive } from '../../../hooks/useResponsive';
 import {
   ArrowDown01,
   Binary,
@@ -208,11 +209,13 @@ const ChannelTableHeader = ({
     );
   };
 
+  const { isMobile } = useResponsive();
+
   return (
-    <Group justify="space-between">
-      <Group gap={5} style={{ paddingLeft: 10 }}>
+    <Group justify="space-between" wrap={isMobile ? 'wrap' : 'nowrap'} gap={isMobile ? 4 : 'md'}>
+      <Group gap={isMobile ? 4 : 5} style={{ paddingLeft: isMobile ? 0 : 10 }}>
         <Select
-          size="xs"
+          size={isMobile ? 'compact-xs' : 'xs'}
           allowDeselect={false}
           value={selectedProfileId}
           onChange={setSelectedProfileId}
@@ -221,54 +224,61 @@ const ChannelTableHeader = ({
             value: `${profile.id}`,
           }))}
           renderOption={renderProfileOption}
+          styles={isMobile ? { input: { fontSize: '0.75rem' } } : {}}
         />
 
-        <Tooltip label="Create Profile">
-          <CreateProfilePopover />
-        </Tooltip>
+        {!isMobile && (
+          <Tooltip label="Create Profile">
+            <CreateProfilePopover />
+          </Tooltip>
+        )}
       </Group>
 
       <Box
         style={{
           display: 'flex',
           justifyContent: 'flex-end',
-          padding: 10,
+          padding: isMobile ? 0 : 10,
         }}
       >
-        <Flex gap={6}>
-          <Button
-            leftSection={<SquarePen size={18} />}
-            variant="default"
-            size="xs"
-            onClick={() => editChannel()}
-            disabled={
-              selectedTableIds.length == 0 ||
-              authUser.user_level != USER_LEVELS.ADMIN
-            }
-          >
-            Edit
-          </Button>
+        <Flex gap={isMobile ? 4 : 6}>
+          {!isMobile && (
+            <>
+              <Button
+                leftSection={<SquarePen size={18} />}
+                variant="default"
+                size="xs"
+                onClick={() => editChannel()}
+                disabled={
+                  selectedTableIds.length == 0 ||
+                  authUser.user_level != USER_LEVELS.ADMIN
+                }
+              >
+                Edit
+              </Button>
+
+              <Button
+                leftSection={<SquareMinus size={18} />}
+                variant="default"
+                size="xs"
+                onClick={deleteChannels}
+                disabled={
+                  selectedTableIds.length == 0 ||
+                  authUser.user_level != USER_LEVELS.ADMIN
+                }
+              >
+                Delete
+              </Button>
+            </>
+          )}
 
           <Button
-            leftSection={<SquareMinus size={18} />}
-            variant="default"
-            size="xs"
-            onClick={deleteChannels}
-            disabled={
-              selectedTableIds.length == 0 ||
-              authUser.user_level != USER_LEVELS.ADMIN
-            }
-          >
-            Delete
-          </Button>
-
-          <Button
-            leftSection={<SquarePlus size={18} />}
+            leftSection={<SquarePlus size={isMobile ? 16 : 18} />}
             variant="light"
-            size="xs"
+            size={isMobile ? 'compact-xs' : 'xs'}
             onClick={() => editChannel(null, { forceAdd: true })}
             disabled={authUser.user_level != USER_LEVELS.ADMIN}
-            p={5}
+            p={isMobile ? 4 : 5}
             color={theme.tailwind.green[5]}
             style={{
               ...(authUser.user_level == USER_LEVELS.ADMIN && {
@@ -276,19 +286,48 @@ const ChannelTableHeader = ({
                 borderColor: theme.tailwind.green[5],
                 color: 'white',
               }),
+              ...(isMobile && { fontSize: '0.75rem' }),
             }}
           >
-            Add
+            {isMobile ? '+' : 'Add'}
           </Button>
 
           <Menu>
             <Menu.Target>
-              <ActionIcon variant="default" size={30}>
-                <EllipsisVertical size={18} />
+              <ActionIcon variant="default" size={isMobile ? 26 : 30}>
+                <EllipsisVertical size={isMobile ? 16 : 18} />
               </ActionIcon>
             </Menu.Target>
 
             <Menu.Dropdown>
+              {isMobile && (
+                <>
+                  <Menu.Item
+                    leftSection={<SquarePen size={16} />}
+                    disabled={
+                      selectedTableIds.length == 0 ||
+                      authUser.user_level != USER_LEVELS.ADMIN
+                    }
+                    onClick={() => editChannel()}
+                  >
+                    <Text size="xs">Edit</Text>
+                  </Menu.Item>
+
+                  <Menu.Item
+                    leftSection={<SquareMinus size={16} />}
+                    disabled={
+                      selectedTableIds.length == 0 ||
+                      authUser.user_level != USER_LEVELS.ADMIN
+                    }
+                    onClick={deleteChannels}
+                  >
+                    <Text size="xs">Delete</Text>
+                  </Menu.Item>
+
+                  <Menu.Divider />
+                </>
+              )}
+
               <Menu.Item
                 leftSection={<ArrowDown01 size={18} />}
                 disabled={

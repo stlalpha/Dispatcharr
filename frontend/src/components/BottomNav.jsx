@@ -38,7 +38,7 @@ export const BottomNav = ({ isAuthenticated = false }) => {
         display: 'flex',
         justifyContent: 'space-around',
         alignItems: 'center',
-        zIndex: 100,
+        zIndex: 9999,
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >

@@ -3,6 +3,7 @@ import useChannelsStore from '../../store/channels';
 import useLogosStore from '../../store/logos';
 import { notifications } from '@mantine/notifications';
 import API from '../../api';
+import { useResponsive } from '../../hooks/useResponsive';
 import ChannelForm from '../forms/Channel';
 import ChannelBatchForm from '../forms/ChannelBatch';
 import RecordingForm from '../forms/Recording';
@@ -219,6 +220,8 @@ const ChannelRowActions = React.memo(
 );
 
 const ChannelsTable = ({}) => {
+  const { isMobile } = useResponsive();
+
   // EPG data lookup
   const tvgsById = useEPGsStore((s) => s.tvgsById);
   const epgs = useEPGsStore((s) => s.epgs);
@@ -1028,44 +1031,50 @@ const ChannelsTable = ({}) => {
     <>
       <Box>
         {/* Header Row: outside the Paper */}
-        <Flex style={{ alignItems: 'center', paddingBottom: 10 }} gap={15}>
-          <Text
-            w={88}
-            h={24}
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 500,
-              fontSize: '20px',
-              lineHeight: 1,
-              letterSpacing: '-0.3px',
-              color: 'gray.6', // Adjust this to match MUI's theme.palette.text.secondary
-              marginBottom: 0,
-            }}
-          >
-            Channels
-          </Text>
+        <Flex style={{ alignItems: 'center', paddingBottom: isMobile ? 4 : 10, flexWrap: isMobile ? 'wrap' : 'nowrap' }} gap={isMobile ? 8 : 15}>
+          {!isMobile && (
+            <Text
+              w={88}
+              h={24}
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+                fontSize: '20px',
+                lineHeight: 1,
+                letterSpacing: '-0.3px',
+                color: 'gray.6',
+                marginBottom: 0,
+              }}
+            >
+              Channels
+            </Text>
+          )}
           <Flex
             style={{
               display: 'flex',
               alignItems: 'center',
-              marginLeft: 10,
+              marginLeft: isMobile ? 0 : 10,
+              width: isMobile ? '100%' : 'auto',
+              justifyContent: isMobile ? 'flex-start' : 'flex-start',
             }}
           >
-            <Text
-              w={37}
-              h={17}
-              style={{
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 400,
-                fontSize: '14px',
-                lineHeight: 1,
-                letterSpacing: '-0.3px',
-                color: 'gray.6', // Adjust this to match MUI's theme.palette.text.secondary
-              }}
-            >
-              Links:
-            </Text>
-            <Group gap={5} style={{ paddingLeft: 10 }}>
+            {!isMobile && (
+              <Text
+                w={37}
+                h={17}
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 400,
+                  fontSize: '14px',
+                  lineHeight: 1,
+                  letterSpacing: '-0.3px',
+                  color: 'gray.6',
+                }}
+              >
+                Links:
+              </Text>
+            )}
+            <Group gap={isMobile ? 4 : 5} style={{ paddingLeft: isMobile ? 0 : 10 }}>
               <Popover
                 withArrow
                 shadow="md"
@@ -1075,14 +1084,15 @@ const ChannelsTable = ({}) => {
               >
                 <Popover.Target>
                   <Button
-                    leftSection={<Tv2 size={18} />}
-                    size="compact-sm"
-                    p={5}
+                    leftSection={<Tv2 size={isMobile ? 14 : 18} />}
+                    size={isMobile ? 'compact-xs' : 'compact-sm'}
+                    p={isMobile ? 4 : 5}
                     color="green"
                     variant="subtle"
                     style={{
                       borderColor: theme.palette.custom.greenMain,
                       color: theme.palette.custom.greenMain,
+                      fontSize: isMobile ? '0.7rem' : undefined,
                     }}
                   >
                     HDHR
@@ -1118,13 +1128,14 @@ const ChannelsTable = ({}) => {
               >
                 <Popover.Target>
                   <Button
-                    leftSection={<ScreenShare size={18} />}
-                    size="compact-sm"
-                    p={5}
+                    leftSection={<ScreenShare size={isMobile ? 14 : 18} />}
+                    size={isMobile ? 'compact-xs' : 'compact-sm'}
+                    p={isMobile ? 4 : 5}
                     variant="subtle"
                     style={{
                       borderColor: theme.palette.custom.indigoMain,
                       color: theme.palette.custom.indigoMain,
+                      fontSize: isMobile ? '0.7rem' : undefined,
                     }}
                   >
                     M3U
@@ -1212,14 +1223,15 @@ const ChannelsTable = ({}) => {
               >
                 <Popover.Target>
                   <Button
-                    leftSection={<Scroll size={18} />}
-                    size="compact-sm"
-                    p={5}
+                    leftSection={<Scroll size={isMobile ? 14 : 18} />}
+                    size={isMobile ? 'compact-xs' : 'compact-sm'}
+                    p={isMobile ? 4 : 5}
                     variant="subtle"
                     color="gray.5"
                     style={{
                       borderColor: theme.palette.custom.greyBorder,
                       color: theme.palette.custom.greyBorder,
+                      fontSize: isMobile ? '0.7rem' : undefined,
                     }}
                   >
                     EPG
