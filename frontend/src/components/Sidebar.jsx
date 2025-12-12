@@ -215,40 +215,42 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth, isMobi
         flexDirection: 'column',
       }}
     >
-      {/* Brand - Click to Toggle (desktop only, mobile uses hamburger) */}
-      <Group
-        onClick={isMobile ? undefined : toggleDrawer}
-        spacing="sm"
-        style={{
-          cursor: isMobile ? 'default' : 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '16px 12px',
-          fontSize: 18,
-          fontWeight: 600,
-          color: '#FFFFFF',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {/* <ListOrdered size={24} /> */}
-        <img width={30} src={logo} />
-        {!collapsed && (
-          <Text
-            sx={{
-              opacity: collapsed ? 0 : 1,
-              transition: 'opacity 0.2s ease-in-out',
-              whiteSpace: 'nowrap', // Ensures text never wraps
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              minWidth: collapsed ? 0 : 150, // Prevents reflow
-            }}
-          >
-            Dispatcharr
-          </Text>
-        )}
-      </Group>
+      {/* Brand - Click to Toggle (desktop only, mobile hides this since header shows logo) */}
+      {!isMobile && (
+        <Group
+          onClick={toggleDrawer}
+          spacing="sm"
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '16px 12px',
+            fontSize: 18,
+            fontWeight: 600,
+            color: '#FFFFFF',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {/* <ListOrdered size={24} /> */}
+          <img width={30} src={logo} />
+          {!collapsed && (
+            <Text
+              sx={{
+                opacity: collapsed ? 0 : 1,
+                transition: 'opacity 0.2s ease-in-out',
+                whiteSpace: 'nowrap', // Ensures text never wraps
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                minWidth: collapsed ? 0 : 150, // Prevents reflow
+              }}
+            >
+              Dispatcharr
+            </Text>
+          )}
+        </Group>
+      )}
 
       {/* Navigation Links */}
       <Stack gap="xs" mt="lg">

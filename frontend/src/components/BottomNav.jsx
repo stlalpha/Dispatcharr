@@ -1,6 +1,6 @@
 import { Box, UnstyledButton, Text, Stack } from '@mantine/core';
 import { Link, useLocation } from 'react-router-dom';
-import { ListOrdered, LayoutGrid, Video, Settings } from 'lucide-react';
+import { ListOrdered, LayoutGrid, ChartLine, Settings } from 'lucide-react';
 import { useResponsive } from '../hooks/useResponsive';
 
 /**
@@ -19,7 +19,7 @@ export const BottomNav = ({ isAuthenticated = false }) => {
   const quickLinks = [
     { path: '/channels', icon: ListOrdered, label: 'Channels' },
     { path: '/guide', icon: LayoutGrid, label: 'Guide' },
-    { path: '/vods', icon: Video, label: 'VODs' },
+    { path: '/stats', icon: ChartLine, label: 'Stats' },
     { path: '/settings', icon: Settings, label: 'Settings' },
   ];
 
