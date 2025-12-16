@@ -288,6 +288,33 @@ export default function TVChannelGuide({ startDate, endDate }) {
   const { updateScroll } = useScrollSync(guideRef, timelineRef);
   const { registerText } = useProgramTextOffsets(guideRef, !isMobile);
 
+  // DEBUG: Test if scroll events fire on guide
+  useEffect(() => {
+    const guide = guideRef.current;
+    if (!guide) {
+      console.log('DEBUG: guideRef.current is null');
+      return;
+    }
+
+    console.log('DEBUG: guideRef.current exists, attaching test listener');
+
+    const testScroll = () => {
+      const timeline = timelineRef.current;
+      console.log('DEBUG: Scroll event fired!', {
+        guideScrollLeft: guide.scrollLeft,
+        timelineScrollLeft: timeline?.scrollLeft,
+        timelineExists: !!timeline,
+      });
+    };
+
+    guide.addEventListener('scroll', testScroll, { passive: true });
+
+    return () => {
+      console.log('DEBUG: Cleaning up test listener');
+      guide.removeEventListener('scroll', testScroll);
+    };
+  }, []);
+
   // Add new state to track hovered logo
   const [hoveredChannelId, setHoveredChannelId] = useState(null);
 
