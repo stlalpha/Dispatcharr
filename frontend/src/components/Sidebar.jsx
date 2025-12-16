@@ -70,7 +70,7 @@ const NavLink = ({ item, isActive, collapsed }) => {
   );
 };
 
-const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
+const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth, isMobile = false, closeMobileMenu = () => {} }) => {
   const location = useLocation();
 
   const channels = useChannelsStore((s) => s.channels);
@@ -175,6 +175,15 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
     fetchVersion();
   }, []);
 
+  // Auto-close mobile menu on navigation (only when pathname changes, not when menu opens)
+  const prevPathnameRef = useRef(location.pathname);
+  useEffect(() => {
+    if (isMobile && !collapsed && location.pathname !== prevPathnameRef.current) {
+      closeMobileMenu();
+    }
+    prevPathnameRef.current = location.pathname;
+  }, [location.pathname, isMobile, closeMobileMenu, collapsed]);
+
   const copyPublicIP = async () => {
     const success = await copyToClipboard(environment.public_ip);
     if (success) {
@@ -188,15 +197,15 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
     }
   };
 
-  const onLogout = async () => {
-    await logout();
+  const onLogout = () => {
+    logout();
     window.location.reload();
   };
 
   return (
     <AppShell.Navbar
       width={{ base: collapsed ? miniDrawerWidth : drawerWidth }}
-      p="xs"
+      p={isMobile ? 'md' : 'xs'}
       style={{
         backgroundColor: '#1A1A1E',
         // transition: 'width 0.3s ease',
@@ -206,40 +215,42 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
         flexDirection: 'column',
       }}
     >
-      {/* Brand - Click to Toggle */}
-      <Group
-        onClick={toggleDrawer}
-        spacing="sm"
-        style={{
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12,
-          padding: '16px 12px',
-          fontSize: 18,
-          fontWeight: 600,
-          color: '#FFFFFF',
-          justifyContent: collapsed ? 'center' : 'flex-start',
-          whiteSpace: 'nowrap',
-        }}
-      >
-        {/* <ListOrdered size={24} /> */}
-        <img width={30} src={logo} />
-        {!collapsed && (
-          <Text
-            sx={{
-              opacity: collapsed ? 0 : 1,
-              transition: 'opacity 0.2s ease-in-out',
-              whiteSpace: 'nowrap', // Ensures text never wraps
-              overflow: 'hidden',
-              textOverflow: 'ellipsis',
-              minWidth: collapsed ? 0 : 150, // Prevents reflow
-            }}
-          >
-            Dispatcharr
-          </Text>
-        )}
-      </Group>
+      {/* Brand - Click to Toggle (desktop only, mobile hides this since header shows logo) */}
+      {!isMobile && (
+        <Group
+          onClick={toggleDrawer}
+          spacing="sm"
+          style={{
+            cursor: 'pointer',
+            display: 'flex',
+            alignItems: 'center',
+            gap: 12,
+            padding: '16px 12px',
+            fontSize: 18,
+            fontWeight: 600,
+            color: '#FFFFFF',
+            justifyContent: collapsed ? 'center' : 'flex-start',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {/* <ListOrdered size={24} /> */}
+          <img width={30} src={logo} />
+          {!collapsed && (
+            <Text
+              sx={{
+                opacity: collapsed ? 0 : 1,
+                transition: 'opacity 0.2s ease-in-out',
+                whiteSpace: 'nowrap', // Ensures text never wraps
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                minWidth: collapsed ? 0 : 150, // Prevents reflow
+              }}
+            >
+              Dispatcharr
+            </Text>
+          )}
+        </Group>
+      )}
 
       {/* Navigation Links */}
       <Stack gap="xs" mt="lg">
@@ -271,7 +282,8 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth }) => {
       >
         {isAuthenticated && (
           <Group>
-            {!collapsed && (
+            {/* Hide public IP on mobile to save space */}
+            {!collapsed && !isMobile && (
               <TextInput
                 label="Public IP"
                 ref={publicIPRef}

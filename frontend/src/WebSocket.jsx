@@ -36,6 +36,7 @@ export const WebsocketProvider = ({ children }) => {
   const updateEPG = useEPGsStore((s) => s.updateEPG);
   const updateEPGProgress = useEPGsStore((s) => s.updateEPGProgress);
 
+  const playlists = usePlaylistsStore((s) => s.playlists);
   const updatePlaylist = usePlaylistsStore((s) => s.updatePlaylist);
 
   // Calculate reconnection delay with exponential backoff
@@ -60,8 +61,11 @@ export const WebsocketProvider = ({ children }) => {
     const host = window.location.hostname;
     const appPort = window.location.port;
 
-    // In development mode, connect directly to the WebSocket server on port 8001
-    if (env_mode === 'dev') {
+    // In development mode (Vite dev server), connect to Django WebSocket on port 8001
+    const isDev = import.meta.env.DEV;
+    console.log('WebSocket env check - isDev:', isDev, 'env_mode:', env_mode, 'appPort:', appPort);
+
+    if (isDev || env_mode === 'dev') {
       return `${protocol}//${host}:8001/ws/?token=${accessToken}`;
     } else {
       // In production mode, use the same port as the main application
@@ -246,14 +250,10 @@ export const WebsocketProvider = ({ children }) => {
               // Update the playlist status whenever we receive a status update
               // Not just when progress is 100% or status is pending_setup
               if (parsedEvent.data.status && parsedEvent.data.account) {
-                // Get fresh playlists from store to avoid stale state from React render cycle
-                const currentPlaylists = usePlaylistsStore.getState().playlists;
-                const isArray = Array.isArray(currentPlaylists);
-                const playlist = isArray
-                  ? currentPlaylists.find(
-                      (p) => p.id === parsedEvent.data.account
-                    )
-                  : currentPlaylists[parsedEvent.data.account];
+                // Check if playlists is an object with IDs as keys or an array
+                const playlist = Array.isArray(playlists)
+                  ? playlists.find((p) => p.id === parsedEvent.data.account)
+                  : playlists[parsedEvent.data.account];
 
                 if (playlist) {
                   // When we receive a "success" status with 100% progress, this is a completed refresh
@@ -276,19 +276,19 @@ export const WebsocketProvider = ({ children }) => {
                       'M3U refresh completed successfully:',
                       updateData
                     );
-                    fetchPlaylists(); // Refresh playlists to ensure UI is up-to-date
-                    fetchChannelProfiles(); // Ensure channel profiles are updated
                   }
 
                   updatePlaylist(updateData);
+                  fetchPlaylists(); // Refresh playlists to ensure UI is up-to-date
+                  fetchChannelProfiles(); // Ensure channel profiles are updated
                 } else {
-                  // Playlist not in store yet - this happens when backend sends websocket
-                  // updates immediately after creating the playlist, before the API response
-                  // returns. The frontend will receive a 'playlist_created' event shortly
-                  // which will trigger a fetchPlaylists() to sync the store.
-                  console.log(
-                    `Received update for playlist ID ${parsedEvent.data.account} not yet in store. ` +
-                      `Waiting for playlist_created event to sync...`
+                  // Log when playlist can't be found for debugging purposes
+                  console.warn(
+                    `Received update for unknown playlist ID: ${parsedEvent.data.account}`,
+                    Array.isArray(playlists)
+                      ? 'playlists is array'
+                      : 'playlists is object',
+                    Object.keys(playlists).length
                   );
                 }
               }
@@ -569,24 +569,14 @@ export const WebsocketProvider = ({ children }) => {
               break;
 
             case 'epg_refresh':
-              // If we have source/account info, check if EPG exists before processing
-              if (parsedEvent.data.source || parsedEvent.data.account) {
-                const sourceId =
-                  parsedEvent.data.source || parsedEvent.data.account;
-                const epg = epgs[sourceId];
+              // Update the store with progress information
+              updateEPGProgress(parsedEvent.data);
 
-                // Only update progress if the EPG still exists in the store
-                // This prevents crashes when receiving updates for deleted EPGs
-                if (epg) {
-                  // Update the store with progress information
-                  updateEPGProgress(parsedEvent.data);
-                } else {
-                  // EPG was deleted, ignore this update
-                  console.debug(
-                    `Ignoring EPG refresh update for deleted EPG ${sourceId}`
-                  );
-                  break;
-                }
+              // If we have source_id/account info, update the EPG source status
+              if (parsedEvent.data.source_id || parsedEvent.data.account) {
+                const sourceId =
+                  parsedEvent.data.source_id || parsedEvent.data.account;
+                const epg = epgs[sourceId];
 
                 if (epg) {
                   // Check for any indication of an error (either via status or error field)
@@ -623,10 +613,6 @@ export const WebsocketProvider = ({ children }) => {
                       status: parsedEvent.data.status || 'success',
                       last_message:
                         parsedEvent.data.message || epg.last_message,
-                      // Use the timestamp from the backend if provided
-                      ...(parsedEvent.data.updated_at && {
-                        updated_at: parsedEvent.data.updated_at,
-                      }),
                     });
 
                     // Only show success notification if we've finished parsing programs and had no errors
@@ -653,16 +639,6 @@ export const WebsocketProvider = ({ children }) => {
                   'Failed to refresh EPG sources after change notification:',
                   e
                 );
-              }
-              break;
-
-            case 'epg_data_created':
-              // A new EPG data entry was created (e.g., for a dummy EPG)
-              // Fetch EPG data so the channel form can immediately assign it
-              try {
-                await fetchEPGData();
-              } catch (e) {
-                console.warn('Failed to refresh EPG data after creation:', e);
               }
               break;
 
@@ -764,14 +740,6 @@ export const WebsocketProvider = ({ children }) => {
                 );
               }
 
-              break;
-
-            case 'playlist_created':
-              // Backend signals that a new playlist has been created and we should refresh
-              console.log(
-                'Playlist created event received, refreshing playlists...'
-              );
-              fetchPlaylists();
               break;
 
             case 'bulk_channel_creation_progress': {

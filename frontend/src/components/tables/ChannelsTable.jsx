@@ -3,6 +3,7 @@ import useChannelsStore from '../../store/channels';
 import useLogosStore from '../../store/logos';
 import { notifications } from '@mantine/notifications';
 import API from '../../api';
+import { useResponsive } from '../../hooks/useResponsive';
 import ChannelForm from '../forms/Channel';
 import ChannelBatchForm from '../forms/ChannelBatch';
 import RecordingForm from '../forms/Recording';
@@ -23,7 +24,6 @@ import {
   ArrowUpNarrowWide,
   ArrowUpDown,
   ArrowDownWideNarrow,
-  Search,
 } from 'lucide-react';
 import {
   Box,
@@ -68,7 +68,7 @@ const epgUrlBase = `${window.location.protocol}//${window.location.host}/output/
 const hdhrUrlBase = `${window.location.protocol}//${window.location.host}/hdhr`;
 
 const ChannelEnabledSwitch = React.memo(
-  ({ rowId, selectedProfileId, selectedTableIds, setSelectedTableIds }) => {
+  ({ rowId, selectedProfileId, selectedTableIds }) => {
     // Directly extract the channels set once to avoid re-renders on every change.
     const isEnabled = useChannelsStore(
       useCallback(
@@ -79,20 +79,16 @@ const ChannelEnabledSwitch = React.memo(
       )
     );
 
-    const handleToggle = async () => {
+    const handleToggle = () => {
       if (selectedTableIds.length > 1) {
-        await API.updateProfileChannels(
+        API.updateProfileChannels(
           selectedTableIds,
           selectedProfileId,
           !isEnabled
         );
       } else {
-        await API.updateProfileChannel(rowId, selectedProfileId, !isEnabled);
+        API.updateProfileChannel(rowId, selectedProfileId, !isEnabled);
       }
-
-      setSelectedTableIds([]);
-
-      return API.requeryChannels();
     };
 
     return (
@@ -224,6 +220,8 @@ const ChannelRowActions = React.memo(
 );
 
 const ChannelsTable = ({}) => {
+  const { isMobile } = useResponsive();
+
   // EPG data lookup
   const tvgsById = useEPGsStore((s) => s.tvgsById);
   const epgs = useEPGsStore((s) => s.epgs);
@@ -293,9 +291,6 @@ const ChannelsTable = ({}) => {
   const [selectedProfile, setSelectedProfile] = useState(
     profiles[selectedProfileId]
   );
-  const [showDisabled, setShowDisabled] = useState(true);
-  const [showOnlyStreamlessChannels, setShowOnlyStreamlessChannels] =
-    useState(false);
 
   const [paginationString, setPaginationString] = useState('');
   const [filters, setFilters] = useState({
@@ -315,7 +310,6 @@ const ChannelsTable = ({}) => {
   const [channelToDelete, setChannelToDelete] = useState(null);
 
   // Column sizing state for resizable columns
-  // Store in localStorage but with empty object as default
   const [columnSizing, setColumnSizing] = useLocalStorage(
     'channels-table-column-sizing',
     {}
@@ -376,15 +370,6 @@ const ChannelsTable = ({}) => {
     params.append('page', pagination.pageIndex + 1);
     params.append('page_size', pagination.pageSize);
     params.append('include_streams', 'true');
-    if (selectedProfileId !== '0') {
-      params.append('channel_profile_id', selectedProfileId);
-    }
-    if (showDisabled === true) {
-      params.append('show_disabled', true);
-    }
-    if (showOnlyStreamlessChannels === true) {
-      params.append('only_streamless', true);
-    }
 
     // Apply sorting
     if (sorting.length > 0) {
@@ -417,14 +402,7 @@ const ChannelsTable = ({}) => {
       pageSize: pagination.pageSize,
     });
     setAllRowIds(ids);
-  }, [
-    pagination,
-    sorting,
-    debouncedFilters,
-    showDisabled,
-    selectedProfileId,
-    showOnlyStreamlessChannels,
-  ]);
+  }, [pagination, sorting, debouncedFilters]);
 
   const stopPropagation = useCallback((e) => {
     e.stopPropagation();
@@ -751,7 +729,6 @@ const ChannelsTable = ({}) => {
               rowId={row.original.id}
               selectedProfileId={selectedProfileId}
               selectedTableIds={table.getState().selectedTableIds}
-              setSelectedTableIds={table.setSelectedTableIds}
             />
           );
         },
@@ -908,12 +885,7 @@ const ChannelsTable = ({}) => {
         ),
       },
     ],
-    // Note: columnSizing is intentionally excluded from dependencies to prevent
-    // columns from being recreated during drag operations (which causes infinite loops).
-    // The column.size values are only used for INITIAL sizing - TanStack Table manages
-    // the actual sizes through its own state after initialization.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [selectedProfileId, channelGroups, logos, theme]
+    [selectedProfileId, channelGroups, logos, theme, columnSizing]
   );
 
   const renderHeaderCell = (header) => {
@@ -974,7 +946,6 @@ const ChannelsTable = ({}) => {
               size="xs"
               variant="unstyled"
               className="table-input-header"
-              leftSection={<Search size={14} opacity={0.5} />}
             />
             <Center>
               {React.createElement(sortingIcon, {
@@ -1011,18 +982,17 @@ const ChannelsTable = ({}) => {
     filters,
     pagination,
     sorting,
-    columnSizing,
-    setColumnSizing,
     manualPagination: true,
     manualSorting: true,
     manualFiltering: true,
     enableRowSelection: true,
     onRowSelectionChange: onRowSelectionChange,
     state: {
+      columnSizing,
       pagination,
       sorting,
     },
-    columnResizeMode: 'onChange',
+    onColumnSizingChange: setColumnSizing,
     getExpandedRowHeight: (row) => {
       return 20 + 28 * row.original.streams.length;
     },
@@ -1061,44 +1031,50 @@ const ChannelsTable = ({}) => {
     <>
       <Box>
         {/* Header Row: outside the Paper */}
-        <Flex style={{ alignItems: 'center', paddingBottom: 10 }} gap={15}>
-          <Text
-            w={88}
-            h={24}
-            style={{
-              fontFamily: 'Inter, sans-serif',
-              fontWeight: 500,
-              fontSize: '20px',
-              lineHeight: 1,
-              letterSpacing: '-0.3px',
-              color: 'gray.6', // Adjust this to match MUI's theme.palette.text.secondary
-              marginBottom: 0,
-            }}
-          >
-            Channels
-          </Text>
+        <Flex style={{ alignItems: 'center', paddingBottom: isMobile ? 4 : 10, flexWrap: isMobile ? 'wrap' : 'nowrap' }} gap={isMobile ? 8 : 15}>
+          {!isMobile && (
+            <Text
+              w={88}
+              h={24}
+              style={{
+                fontFamily: 'Inter, sans-serif',
+                fontWeight: 500,
+                fontSize: '20px',
+                lineHeight: 1,
+                letterSpacing: '-0.3px',
+                color: 'gray.6',
+                marginBottom: 0,
+              }}
+            >
+              Channels
+            </Text>
+          )}
           <Flex
             style={{
               display: 'flex',
               alignItems: 'center',
-              marginLeft: 10,
+              marginLeft: isMobile ? 0 : 10,
+              width: isMobile ? '100%' : 'auto',
+              justifyContent: isMobile ? 'flex-start' : 'flex-start',
             }}
           >
-            <Text
-              w={37}
-              h={17}
-              style={{
-                fontFamily: 'Inter, sans-serif',
-                fontWeight: 400,
-                fontSize: '14px',
-                lineHeight: 1,
-                letterSpacing: '-0.3px',
-                color: 'gray.6', // Adjust this to match MUI's theme.palette.text.secondary
-              }}
-            >
-              Links:
-            </Text>
-            <Group gap={5} style={{ paddingLeft: 10 }}>
+            {!isMobile && (
+              <Text
+                w={37}
+                h={17}
+                style={{
+                  fontFamily: 'Inter, sans-serif',
+                  fontWeight: 400,
+                  fontSize: '14px',
+                  lineHeight: 1,
+                  letterSpacing: '-0.3px',
+                  color: 'gray.6',
+                }}
+              >
+                Links:
+              </Text>
+            )}
+            <Group gap={isMobile ? 4 : 5} style={{ paddingLeft: isMobile ? 0 : 10 }}>
               <Popover
                 withArrow
                 shadow="md"
@@ -1108,14 +1084,15 @@ const ChannelsTable = ({}) => {
               >
                 <Popover.Target>
                   <Button
-                    leftSection={<Tv2 size={18} />}
-                    size="compact-sm"
-                    p={5}
+                    leftSection={<Tv2 size={isMobile ? 14 : 18} />}
+                    size={isMobile ? 'compact-xs' : 'compact-sm'}
+                    p={isMobile ? 4 : 5}
                     color="green"
                     variant="subtle"
                     style={{
                       borderColor: theme.palette.custom.greenMain,
                       color: theme.palette.custom.greenMain,
+                      fontSize: isMobile ? '0.7rem' : undefined,
                     }}
                   >
                     HDHR
@@ -1151,13 +1128,14 @@ const ChannelsTable = ({}) => {
               >
                 <Popover.Target>
                   <Button
-                    leftSection={<ScreenShare size={18} />}
-                    size="compact-sm"
-                    p={5}
+                    leftSection={<ScreenShare size={isMobile ? 14 : 18} />}
+                    size={isMobile ? 'compact-xs' : 'compact-sm'}
+                    p={isMobile ? 4 : 5}
                     variant="subtle"
                     style={{
                       borderColor: theme.palette.custom.indigoMain,
                       color: theme.palette.custom.indigoMain,
+                      fontSize: isMobile ? '0.7rem' : undefined,
                     }}
                   >
                     M3U
@@ -1245,14 +1223,15 @@ const ChannelsTable = ({}) => {
               >
                 <Popover.Target>
                   <Button
-                    leftSection={<Scroll size={18} />}
-                    size="compact-sm"
-                    p={5}
+                    leftSection={<Scroll size={isMobile ? 14 : 18} />}
+                    size={isMobile ? 'compact-xs' : 'compact-sm'}
+                    p={isMobile ? 4 : 5}
                     variant="subtle"
                     color="gray.5"
                     style={{
                       borderColor: theme.palette.custom.greyBorder,
                       color: theme.palette.custom.greyBorder,
+                      fontSize: isMobile ? '0.7rem' : undefined,
                     }}
                   >
                     EPG
@@ -1350,10 +1329,6 @@ const ChannelsTable = ({}) => {
             deleteChannels={deleteChannels}
             selectedTableIds={table.selectedTableIds}
             table={table}
-            showDisabled={showDisabled}
-            setShowDisabled={setShowDisabled}
-            showOnlyStreamlessChannels={showOnlyStreamlessChannels}
-            setShowOnlyStreamlessChannels={setShowOnlyStreamlessChannels}
           />
 
           {/* Table or ghost empty state inside Paper */}

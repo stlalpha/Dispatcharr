@@ -9,7 +9,7 @@ export default defineConfig({
   // publicDir: '/data',
 
   server: {
-    port: 9191,
+    port: 3000,  // Different port from Docker (9191)
 
     // proxy: {
     //   "/api": {

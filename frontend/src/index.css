@@ -122,3 +122,98 @@ table.mrt-table tr.mantine-Table-tr.mantine-Table-tr-detail-panel td.mantine-Tab
   max-height: 30px;
   /* Set max height */
 }
+
+/* ========================================
+   Mobile Responsive Styles
+   ======================================== */
+
+/* Mobile-specific optimizations (< 768px) */
+@media (max-width: 768px) {
+  body {
+    /* Smooth scrolling on mobile devices */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent bounce scrolling on iOS */
+    overscroll-behavior-y: none;
+  }
+
+  /* Safe area insets for notched phones (iPhone X+, etc.) */
+  body {
+    padding-top: env(safe-area-inset-top);
+    padding-right: env(safe-area-inset-right);
+    padding-bottom: env(safe-area-inset-bottom);
+    padding-left: env(safe-area-inset-left);
+  }
+
+  /* Touch-friendly minimum tap targets (44x44px per Apple/Material guidelines) */
+  button,
+  a[role="button"],
+  [role="button"],
+  .mantine-Button-root,
+  .mantine-ActionIcon-root {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Ensure input fields are touch-friendly */
+  input,
+  select,
+  textarea,
+  .mantine-Input-input {
+    min-height: 44px;
+  }
+
+  /* Remove hardcoded table min-widths on mobile */
+  .divTable {
+    min-width: unset !important;
+  }
+
+  /* Prevent text selection during touch interactions */
+  * {
+    -webkit-touch-callout: none;
+    -webkit-tap-highlight-color: transparent;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
+    user-select: none;
+  }
+
+  /* Allow text selection in input fields and content areas */
+  input,
+  textarea,
+  [contenteditable="true"],
+  .selectable {
+    -webkit-touch-callout: default;
+    -webkit-user-select: text;
+    -moz-user-select: text;
+    -ms-user-select: text;
+    user-select: text;
+  }
+
+  /* Optimize font rendering for mobile */
+  body {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+}
+
+/* Landscape phone orientation (maximize vertical space) */
+@media (max-width: 768px) and (orientation: landscape) {
+  /* Reduce vertical padding/margins */
+  .mantine-AppShell-main {
+    padding: 0.5rem !important;
+  }
+
+  /* Reduce spacing in stacks */
+  .mantine-Stack-root {
+    gap: 0.5rem !important;
+  }
+}
+
+/* Tablet-specific adjustments (768-1024px) */
+@media (min-width: 768px) and (max-width: 1024px) {
+  /* Slightly larger touch targets for tablet */
+  button,
+  .mantine-Button-root {
+    min-height: 40px;
+  }
+}
