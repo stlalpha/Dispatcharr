@@ -557,7 +557,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
   useEffect(() => {
     const tvGuide = tvGuideRef.current;
 
-    if (!tvGuide) return undefined;
+    if (!tvGuide || isMobile) return undefined; // Skip wheel handling on mobile - not needed for touch devices
 
     const handleContainerWheel = (event) => {
       const guide = guideRef.current;
@@ -606,10 +606,13 @@ export default function TVChannelGuide({ startDate, endDate }) {
         capture: true,
       });
     };
-  }, []);
+  }, [isMobile]);
 
   // Fallback: continuously monitor for any scroll changes
+  // Only needed on desktop since mobile uses native scroll with scroll event listener
   useEffect(() => {
+    if (isMobile) return; // Skip polling on mobile - scroll event listener handles sync
+
     let rafId = null;
     let lastCheck = 0;
 
@@ -635,11 +638,11 @@ export default function TVChannelGuide({ startDate, endDate }) {
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
     };
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => {
     const tvGuide = tvGuideRef.current;
-    if (!tvGuide) return;
+    if (!tvGuide || isMobile) return; // Skip custom touch handling on mobile - let native scrolling work
 
     let lastTouchX = null;
     let isTouching = false;
@@ -730,7 +733,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
       tvGuide.removeEventListener('touchend', handleTouchEnd);
       tvGuide.removeEventListener('touchcancel', handleTouchEnd);
     };
-  }, []);
+  }, [isMobile]);
 
   const syncScrollLeft = useCallback((nextLeft, behavior = 'auto') => {
     const guideNode = guideRef.current;

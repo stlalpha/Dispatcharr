@@ -63,9 +63,13 @@
     grid-template-rows: auto auto;
     gap: 2px;
     min-width: 56px;
+    /* Disable transitions on mobile for better scroll performance */
+    transition: none;
   }
 
   .tv-guide .guide-program-container .guide-program:active {
+    /* Re-enable transition only for tap feedback */
+    transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
     transform: scale(0.95);
   }
 
@@ -205,6 +209,11 @@
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   overscroll-behavior: contain;
+  /* GPU acceleration for smooth scrolling */
+  transform: translateZ(0);
+  will-change: scroll-position;
+  /* Containment for better performance */
+  contain: layout style;
 }
 
 .tv-guide .guide-list-outer::-webkit-scrollbar {
@@ -216,16 +225,25 @@
   .tv-guide .guide-list-outer {
     -webkit-overflow-scrolling: touch;
     overscroll-behavior: contain;
+    /* Tell browser we want native pan scrolling */
+    touch-action: pan-x pan-y;
     /* Note: scroll-snap on mobile disabled for now - causes jank */
   }
 
   /* Reduce will-change scope on mobile for better performance */
   .tv-guide .guide-program-container {
     will-change: auto;
+    /* Add containment for better mobile performance */
+    contain: layout style paint;
   }
 
   .tv-guide .guide-program-container:active {
     will-change: transform;
+  }
+
+  /* GPU acceleration for sticky channel logos on mobile */
+  .tv-guide .channel-logo {
+    transform: translateZ(0);
   }
 }
 
