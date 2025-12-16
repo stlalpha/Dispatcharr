@@ -87,7 +87,7 @@ const GuideRow = React.memo(({ index, style, data }) => {
           display: 'flex',
           height: '100%',
           borderBottom: '0px solid #27272A',
-          transition: 'height 0.2s ease',
+          transition: isMobile ? 'none' : 'height 0.2s ease',
           position: 'relative',
           overflow: 'visible',
         }}
@@ -104,7 +104,7 @@ const GuideRow = React.memo(({ index, style, data }) => {
             borderBottom: '1px solid #27272A',
             boxShadow: '2px 0 5px rgba(0,0,0,0.2)',
             height: '100%',
-            transition: 'height 0.2s ease',
+            transition: isMobile ? 'none' : 'height 0.2s ease',
             cursor: 'pointer',
           }}
           onClick={(event) => handleLogoClick(channel, event)}
@@ -195,7 +195,7 @@ const GuideRow = React.memo(({ index, style, data }) => {
             flex: 1,
             position: 'relative',
             height: '100%',
-            transition: 'height 0.2s ease',
+            transition: isMobile ? 'none' : 'height 0.2s ease',
             paddingLeft: 0,
           }}
         >
@@ -276,6 +276,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
   const tvGuideRef = useRef(null); // Ref for the main tv-guide wrapper
   const isSyncingScroll = useRef(false);
   const guideScrollLeftRef = useRef(0);
+  const scrollDebounceRef = useRef(null);
   const {
     ref: guideContainerRef,
     width: guideWidth,
@@ -501,44 +502,6 @@ export default function TVChannelGuide({ startDate, endDate }) {
     }
     return hours;
   }, [start, end, formatDayLabel]);
-
-  useEffect(() => {
-    const node = guideRef.current;
-    if (!node) return undefined;
-
-    const handleScroll = () => {
-      if (isSyncingScroll.current) {
-        return;
-      }
-
-      const { scrollLeft } = node;
-
-      // Always sync if timeline is out of sync, even if ref matches
-      if (
-        timelineRef.current &&
-        timelineRef.current.scrollLeft !== scrollLeft
-      ) {
-        isSyncingScroll.current = true;
-        timelineRef.current.scrollLeft = scrollLeft;
-        guideScrollLeftRef.current = scrollLeft;
-        setGuideScrollLeft(scrollLeft);
-        requestAnimationFrame(() => {
-          isSyncingScroll.current = false;
-        });
-      } else if (scrollLeft !== guideScrollLeftRef.current) {
-        // Update ref even if timeline was already synced
-        guideScrollLeftRef.current = scrollLeft;
-        setGuideScrollLeft(scrollLeft);
-      }
-    };
-
-    node.addEventListener('scroll', handleScroll, { passive: true });
-
-    return () => {
-      node.removeEventListener('scroll', handleScroll);
-    };
-  }, []);
-
   // Update "now" every second
   useEffect(() => {
     const interval = setInterval(() => {
@@ -605,38 +568,6 @@ export default function TVChannelGuide({ startDate, endDate }) {
       tvGuide.removeEventListener('wheel', handleContainerWheel, {
         capture: true,
       });
-    };
-  }, [isMobile]);
-
-  // Fallback: continuously monitor for any scroll changes
-  // Only needed on desktop since mobile uses native scroll with scroll event listener
-  useEffect(() => {
-    if (isMobile) return; // Skip polling on mobile - scroll event listener handles sync
-
-    let rafId = null;
-    let lastCheck = 0;
-
-    const checkSync = (timestamp) => {
-      // Throttle to check every 100ms instead of every frame
-      if (timestamp - lastCheck > 100) {
-        const guide = guideRef.current;
-        const timeline = timelineRef.current;
-
-        if (guide && timeline && guide.scrollLeft !== timeline.scrollLeft) {
-          timeline.scrollLeft = guide.scrollLeft;
-          guideScrollLeftRef.current = guide.scrollLeft;
-          setGuideScrollLeft(guide.scrollLeft);
-        }
-        lastCheck = timestamp;
-      }
-
-      rafId = requestAnimationFrame(checkSync);
-    };
-
-    rafId = requestAnimationFrame(checkSync);
-
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
     };
   }, [isMobile]);
 
@@ -1115,13 +1046,13 @@ export default function TVChannelGuide({ startDate, endDate }) {
                     : '#2c5282',
               color: isPast ? '#a0aec0' : '#fff',
               boxShadow: isExpanded ? '0 4px 8px rgba(0,0,0,0.4)' : 'none',
-              transition: 'all 0.2s ease',
+              transition: isMobile ? 'none' : 'all 0.2s ease',
             }}
           >
             <Box
               style={{
                 transform: `translateX(${textOffsetLeft}px)`,
-                transition: 'transform 0.1s ease-out',
+                transition: isMobile ? 'none' : 'transform 0.1s ease-out',
               }}
             >
               <Text
@@ -1166,7 +1097,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
               <Box
                 style={{
                   transform: `translateX(${textOffsetLeft}px)`,
-                  transition: 'transform 0.1s ease-out',
+                  transition: isMobile ? 'none' : 'transform 0.1s ease-out',
                 }}
               >
                 <Text
@@ -1681,6 +1612,35 @@ export default function TVChannelGuide({ startDate, endDate }) {
               ref={listRef}
               outerRef={guideRef}
               overscanCount={8}
+              onScroll={({ scrollOffset, scrollDirection }) => {
+                // Get actual scroll position from the guide element
+                const scrollLeft = guideRef.current?.scrollLeft;
+                if (scrollLeft === undefined) return;
+
+                // Prevent circular updates
+                if (isSyncingScroll.current) return;
+
+                isSyncingScroll.current = true;
+
+                // Immediate timeline sync (no re-render)
+                if (timelineRef.current) {
+                  timelineRef.current.scrollLeft = scrollLeft;
+                }
+                guideScrollLeftRef.current = scrollLeft;
+
+                // Debounced state update for text offset recalculation
+                if (scrollDebounceRef.current) {
+                  clearTimeout(scrollDebounceRef.current);
+                }
+                scrollDebounceRef.current = setTimeout(() => {
+                  setGuideScrollLeft(scrollLeft);
+                }, 50);
+
+                // Release sync lock next frame
+                requestAnimationFrame(() => {
+                  isSyncingScroll.current = false;
+                });
+              }}
             >
               {GuideRow}
             </VariableSizeList>
