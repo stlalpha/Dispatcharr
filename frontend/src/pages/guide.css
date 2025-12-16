@@ -3,26 +3,95 @@
   left: 2px;
   top: 2px;
   padding: 10px;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
   border-radius: 8px;
-  background: linear-gradient(to right, #2D2D2F, #1F1F20);
-  /* Default background */
+  background: linear-gradient(to right, #3A3A3F, #2A2A2E);
+  border: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
   transition: all 0.2s ease-out;
+  font-size: 14px;
+
+  /* CSS Grid for content hierarchy */
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  gap: 4px;
+  align-content: start;
+  height: 100%;
+  min-height: 0;
+}
+
+/* Program content structure */
+.program-title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.program-time {
+  font-size: 0.9em;
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.program-description {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: 0.85em;
+  opacity: 0.7;
+  min-height: 0;
+  line-height: 1.3;
+}
+
+/* Mobile: compact everything, hide descriptions */
+@media (max-width: 767.99px) {
+  .tv-guide .guide-program-container .guide-program {
+    padding: 4px 6px;
+    font-size: 11px;
+    border-radius: 4px;
+    grid-template-rows: auto auto;
+    gap: 2px;
+  }
+
+  .program-title {
+    font-size: 11px;
+    line-height: 1.2;
+  }
+
+  .program-time {
+    font-size: 10px;
+  }
+
+  .program-description {
+    display: none;
+  }
 }
 
 .tv-guide .guide-program-container .guide-program.live {
-  background: linear-gradient(to right, #3BA882, #245043);
+  background: linear-gradient(to right, #3BA882, #2A7A68);
+  border: 1px solid rgba(59, 168, 130, 0.3);
+  box-shadow: 0 2px 8px rgba(20, 145, 126, 0.15);
 }
 
 .tv-guide .guide-program-container .guide-program.live:hover {
-  background: linear-gradient(to right, #2E9E80, #206E5E);
+  background: linear-gradient(to right, #45C295, #2E9E80);
+  box-shadow: 0 4px 12px rgba(20, 145, 126, 0.25);
 }
 
 .tv-guide .guide-program-container .guide-program.not-live:hover {
-  background: linear-gradient(to right, #2F3F3A, #1E2926);
+  background: linear-gradient(to right, #454550, #353540);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+/* Make "No program data" blocks visible */
+.tv-guide .guide-program-container .guide-program:empty::before,
+.tv-guide .guide-program-container .guide-program[data-empty="true"] {
+  background: #2A2A2E;
+  border: 1px solid rgba(255, 255, 255, 0.04);
+  opacity: 0.6;
 }
 
 /* New styles for expanded programs */
@@ -44,13 +113,50 @@
   background: linear-gradient(to right, #1F2423, #2F3A37);
 }
 
-/* Ensure channel logo is always on top */
+/* Channel logo column - responsive sizing */
 .tv-guide .channel-logo {
   z-index: 30;
   position: relative;
   position: sticky !important;
   left: 0;
-  z-index: 30;
+  width: 120px;
+  min-width: 120px;
+}
+
+@media (max-width: 767.99px) {
+  .tv-guide .channel-logo {
+    width: 72px;
+    min-width: 72px;
+  }
+}
+
+/* Channel number badge */
+.channel-number {
+  height: 24px;
+  min-width: 36px;
+  font-size: 0.85em;
+  padding: 2px 8px;
+}
+
+@media (max-width: 767.99px) {
+  .channel-number {
+    height: 16px;
+    min-width: 24px;
+    font-size: 0.7em;
+    padding: 1px 4px;
+  }
+}
+
+/* Time header cells */
+.time-header-cell {
+  height: 40px;
+}
+
+@media (max-width: 767.99px) {
+  .time-header-cell {
+    height: 32px;
+    font-size: 11px;
+  }
 }
 
 /* Give focus to expanded elements */
@@ -79,4 +185,42 @@
 /* Also hide scrollbars visually across browsers for the outer container */
 .tv-guide .guide-list-outer::-webkit-scrollbar {
   display: none; /* Chrome, Safari, Opera */
+}
+
+/* Mobile-specific scroll optimization */
+@media (max-width: 767.99px) {
+  .tv-guide .guide-list-outer {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+  }
+
+  /* Reduce will-change scope on mobile for better performance */
+  .tv-guide .guide-program-container {
+    will-change: auto;
+  }
+
+  .tv-guide .guide-program-container:active {
+    will-change: transform;
+  }
+}
+
+/* Time header visibility improvements */
+.tv-guide .time-header,
+.tv-guide [class*="time-header"],
+.tv-guide [class*="hour-marker"] {
+  color: rgba(255, 255, 255, 0.7) !important;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+  background: rgba(255, 255, 255, 0.03);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 8px;
+}
+
+@media (max-width: 767.99px) {
+  .tv-guide .time-header,
+  .tv-guide [class*="time-header"],
+  .tv-guide [class*="hour-marker"] {
+    font-size: 12px;
+    padding: 6px;
+  }
 }

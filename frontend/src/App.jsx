@@ -145,14 +145,16 @@ const App = () => {
             {isMobile && (
               <AppShell.Header
                 style={{
-                  backgroundColor: '#1A1A1E',
-                  borderBottom: '1px solid #2A2A2E',
+                  background: 'linear-gradient(180deg, rgba(20, 145, 126, 0.05) 0%, #1A1A1E 100%)',
+                  borderBottom: '1px solid rgba(255, 255, 255, 0.06)',
+                  boxShadow: '0 2px 8px rgba(0, 0, 0, 0.2)',
+                  backdropFilter: 'blur(10px)',
                   zIndex: 1000,
                 }}
               >
                 <Flex
                   h={60}
-                  px="md"
+                  px={20}
                   justify="space-between"
                   align="center"
                   style={{ width: '100%' }}
@@ -177,7 +179,17 @@ const App = () => {
                   )}
                   <Group gap="xs">
                     <img width={24} height={24} src={logo} alt="Dispatcharr" style={{ objectFit: 'contain' }} />
-                    <Text fw={600} size="lg" style={{ color: 'white' }}>Dispatcharr</Text>
+                    <Text
+                      fw={700}
+                      size="lg"
+                      style={{
+                        color: 'white',
+                        fontFamily: 'var(--font-display)',
+                        letterSpacing: '-0.02em',
+                      }}
+                    >
+                      Dispatcharr
+                    </Text>
                   </Group>
                   <Box style={{ width: 40 }} />
                 </Flex>
@@ -198,15 +210,16 @@ const App = () => {
                 style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  // transition: 'margin-left 0.3s',
-                  backgroundColor: '#18181b',
+                  background: isMobile
+                    ? 'linear-gradient(180deg, rgba(20, 145, 126, 0.02) 0%, transparent 20%), #18181b'
+                    : '#18181b',
                   minHeight: '100vh',
                   paddingTop: isMobile ? '60px' : 0,
-                  paddingBottom: (isMobile && isAuthenticated) ? '60px' : 0, // Account for bottom nav
+                  paddingBottom: (isMobile && isAuthenticated) ? '64px' : 0,
                   color: 'white',
                 }}
               >
-                <Box sx={{ p: isMobile ? 1 : 2, flex: 1, overflow: 'auto' }}>
+                <Box sx={{ p: isMobile ? 2 : 2, flex: 1, overflow: 'auto' }}>
                   <Routes>
                     {isAuthenticated ? (
                       <>

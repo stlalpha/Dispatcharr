@@ -37,16 +37,15 @@ import useLocalStorage from '../hooks/useLocalStorage';
 import { useElementSize } from '@mantine/hooks';
 import { VariableSizeList } from 'react-window';
 import {
-  PROGRAM_HEIGHT,
-  EXPANDED_PROGRAM_HEIGHT,
   buildChannelIdMap,
   mapProgramsByChannel,
   computeRowHeights,
 } from './guideUtils';
+import { useResponsive } from '../hooks/useResponsive';
+import { getGuideTokens } from './Guide/tokens';
 
 /** Layout constants */
-const CHANNEL_WIDTH = 120; // Width of the channel/logo column
-const HOUR_WIDTH = 450; // Increased from 300 to 450 to make each program wider
+const HOUR_WIDTH = 450; // Width of each hour block
 const MINUTE_INCREMENT = 15; // For positioning programs every 15 min
 const MINUTE_BLOCK_WIDTH = HOUR_WIDTH / (60 / MINUTE_INCREMENT);
 
@@ -62,6 +61,8 @@ const GuideRow = React.memo(({ index, style, data }) => {
     renderProgram,
     handleLogoClick,
     contentWidth,
+    isMobile,
+    channelWidth,
   } = data;
 
   const channel = filteredChannels[index];
@@ -73,8 +74,8 @@ const GuideRow = React.memo(({ index, style, data }) => {
   const rowHeight =
     rowHeights[index] ??
     (channelPrograms.some((program) => program.id === expandedProgramId)
-      ? EXPANDED_PROGRAM_HEIGHT
-      : PROGRAM_HEIGHT);
+      ? data.expandedProgramHeight
+      : data.programHeight);
 
   return (
     <div
@@ -94,8 +95,6 @@ const GuideRow = React.memo(({ index, style, data }) => {
         <Box
           className="channel-logo"
           style={{
-            width: CHANNEL_WIDTH,
-            minWidth: CHANNEL_WIDTH,
             flexShrink: 0,
             display: 'flex',
             alignItems: 'center',
@@ -104,12 +103,9 @@ const GuideRow = React.memo(({ index, style, data }) => {
             borderRight: '1px solid #27272A',
             borderBottom: '1px solid #27272A',
             boxShadow: '2px 0 5px rgba(0,0,0,0.2)',
-            left: 0,
-            zIndex: 30,
             height: '100%',
             transition: 'height 0.2s ease',
             cursor: 'pointer',
-            position: 'relative',
           }}
           onClick={(event) => handleLogoClick(channel, event)}
           onMouseEnter={() => setHoveredChannelId(channel.id)}
@@ -152,7 +148,7 @@ const GuideRow = React.memo(({ index, style, data }) => {
             <Box
               style={{
                 width: '100%',
-                height: `${rowHeight - 32}px`,
+                flex: 1,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -175,21 +171,18 @@ const GuideRow = React.memo(({ index, style, data }) => {
             <Text
               size="sm"
               weight={600}
+              className="channel-number"
               style={{
                 position: 'absolute',
                 bottom: '4px',
                 left: '50%',
                 transform: 'translateX(-50%)',
                 backgroundColor: '#18181B',
-                padding: '2px 8px',
                 borderRadius: 4,
-                fontSize: '0.85em',
                 border: '1px solid #27272A',
-                height: '24px',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                minWidth: '36px',
               }}
             >
               {channel.channel_number || '-'}
@@ -271,6 +264,11 @@ export default function TVChannelGuide({ startDate, endDate }) {
   const [selectedProfileId, setSelectedProfileId] = useState('all');
 
   const env_mode = useSettingsStore((s) => s.environment.env_mode);
+  const { isMobile, isDesktop } = useResponsive();
+
+  // Get all responsive dimensions from tokens
+  const tokens = getGuideTokens(isDesktop);
+  const { rowHeight: programHeight, expandedHeight: expandedProgramHeight, channelWidth } = tokens;
 
   const guideRef = useRef(null);
   const timelineRef = useRef(null); // New ref for timeline scrolling
@@ -435,14 +433,16 @@ export default function TVChannelGuide({ startDate, endDate }) {
       computeRowHeights(
         filteredChannels,
         programsByChannelId,
-        expandedProgramId
+        expandedProgramId,
+        programHeight,
+        expandedProgramHeight
       ),
-    [filteredChannels, programsByChannelId, expandedProgramId]
+    [filteredChannels, programsByChannelId, expandedProgramId, programHeight, expandedProgramHeight]
   );
 
   const getItemSize = useCallback(
-    (index) => rowHeights[index] ?? PROGRAM_HEIGHT,
-    [rowHeights]
+    (index) => rowHeights[index] ?? programHeight,
+    [rowHeights, programHeight]
   );
 
   const [timeFormatSetting] = useLocalStorage('time-format', '12h');
@@ -1052,7 +1052,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
       const isPast = now.isAfter(programEnd);
       const isExpanded = expandedProgramId === program.id;
 
-      const rowHeight = isExpanded ? EXPANDED_PROGRAM_HEIGHT : PROGRAM_HEIGHT;
+      const rowHeight = isExpanded ? expandedProgramHeight : programHeight;
       const MIN_EXPANDED_WIDTH = 450;
       const expandedWidthPx = Math.max(widthPx, MIN_EXPANDED_WIDTH);
 
@@ -1235,8 +1235,8 @@ export default function TVChannelGuide({ startDate, endDate }) {
   );
 
   const contentWidth = useMemo(
-    () => hourTimeline.length * HOUR_WIDTH + CHANNEL_WIDTH,
-    [hourTimeline]
+    () => hourTimeline.length * HOUR_WIDTH + channelWidth,
+    [hourTimeline, channelWidth]
   );
 
   const virtualizedHeight = useMemo(() => guideHeight || 600, [guideHeight]);
@@ -1268,6 +1268,11 @@ export default function TVChannelGuide({ startDate, endDate }) {
       renderProgram,
       handleLogoClick,
       contentWidth,
+      programHeight,
+      expandedProgramHeight,
+      isMobile,
+      channelWidth,
+      tokens,
     }),
     [
       filteredChannels,
@@ -1280,6 +1285,11 @@ export default function TVChannelGuide({ startDate, endDate }) {
       handleLogoClick,
       contentWidth,
       setHoveredChannelId,
+      programHeight,
+      expandedProgramHeight,
+      isMobile,
+      channelWidth,
+      tokens,
     ]
   );
 
@@ -1493,14 +1503,14 @@ export default function TVChannelGuide({ startDate, endDate }) {
         >
           {/* Logo header cell - sticky in both directions */}
           <Box
+            className="time-header-cell"
             style={{
-              width: CHANNEL_WIDTH,
-              minWidth: CHANNEL_WIDTH,
+              width: channelWidth,
+              minWidth: channelWidth,
               flexShrink: 0,
-              height: '40px',
               backgroundColor: '#18181B',
               borderBottom: '1px solid #27272A',
-              borderRight: '1px solid #27272A', // Increased border width
+              borderRight: '1px solid #27272A',
               position: 'sticky',
               left: 0,
               zIndex: 200,
@@ -1540,15 +1550,15 @@ export default function TVChannelGuide({ startDate, endDate }) {
                   return (
                     <Box
                       key={time.format()}
+                      className="time-header-cell"
                       style={{
                         width: HOUR_WIDTH,
-                        height: '40px',
                         position: 'relative',
                         color: '#a0aec0',
                         borderRight: '1px solid #8DAFAA',
                         cursor: 'pointer',
-                        borderLeft: isNewDay ? '2px solid #3BA882' : 'none', // Highlight day boundaries
-                        backgroundColor: isNewDay ? '#1E2A27' : '#1B2421', // Subtle background for new days
+                        borderLeft: isNewDay ? '2px solid #3BA882' : 'none',
+                        backgroundColor: isNewDay ? '#1E2A27' : '#1B2421',
                       }}
                       onClick={(e) => handleTimeClick(time, e)}
                     >
@@ -1646,7 +1656,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
             <Box
               style={{
                 position: 'absolute',
-                left: nowPosition + CHANNEL_WIDTH - guideScrollLeft,
+                left: nowPosition + channelWidth - guideScrollLeft,
                 top: 0,
                 bottom: 0,
                 width: '2px',
@@ -1664,7 +1674,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
               width={virtualizedWidth}
               itemCount={filteredChannels.length}
               itemSize={getItemSize}
-              estimatedItemSize={PROGRAM_HEIGHT}
+              estimatedItemSize={programHeight}
               itemKey={itemKey}
               itemData={listData}
               ref={listRef}

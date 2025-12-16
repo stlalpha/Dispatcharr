@@ -205,11 +205,12 @@ const Sidebar = ({ collapsed, toggleDrawer, drawerWidth, miniDrawerWidth, isMobi
   return (
     <AppShell.Navbar
       width={{ base: collapsed ? miniDrawerWidth : drawerWidth }}
-      p={isMobile ? 'md' : 'xs'}
+      p={isMobile ? '20px 16px' : 'xs'}
       style={{
-        backgroundColor: '#1A1A1E',
-        // transition: 'width 0.3s ease',
-        borderRight: '1px solid #2A2A2E',
+        background: isMobile ? 'rgba(26, 26, 30, 0.92)' : '#1A1A1E',
+        backdropFilter: isMobile ? 'blur(24px) saturate(150%)' : 'none',
+        borderRight: isMobile ? '1px solid rgba(255, 255, 255, 0.08)' : '1px solid #2A2A2E',
+        boxShadow: isMobile ? '8px 0 32px rgba(0, 0, 0, 0.5)' : 'none',
         minHeight: '100vh',
         display: 'flex',
         flexDirection: 'column',

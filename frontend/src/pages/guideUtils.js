@@ -1,7 +1,11 @@
 import dayjs from 'dayjs';
+import { guideTokens } from './Guide/tokens';
 
-export const PROGRAM_HEIGHT = 90;
-export const EXPANDED_PROGRAM_HEIGHT = 180;
+// Export tokens for backward compatibility
+export const PROGRAM_HEIGHT = guideTokens.row.desktop;
+export const EXPANDED_PROGRAM_HEIGHT = guideTokens.row.expandedDesktop;
+export const PROGRAM_HEIGHT_MOBILE = guideTokens.row.base;
+export const EXPANDED_PROGRAM_HEIGHT_MOBILE = guideTokens.row.expandedBase;
 
 export function buildChannelIdMap(channels, tvgsById, epgs = {}) {
   const map = new Map();

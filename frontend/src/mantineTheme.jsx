@@ -230,6 +230,14 @@ const theme = createTheme({
       fontFamily: 'Inter, sans-serif',
     },
   },
+
+  other: {
+    tealGradient: 'linear-gradient(135deg, #14917E 0%, #1BA896 100%)',
+    tealGlow: '0 4px 16px rgba(20, 145, 126, 0.3)',
+    tealGlowStrong: '0 4px 20px rgba(20, 145, 126, 0.5)',
+    glassBackground: 'rgba(26, 26, 30, 0.85)',
+    glassBlur: 'blur(20px) saturate(150%)',
+  },
 });
 
 export default theme;

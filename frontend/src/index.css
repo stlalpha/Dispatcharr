@@ -3,15 +3,29 @@
   --separator-border: transparent !important;
   /* Override Allotment's default border */
   --sash-hover-size: 3px !important;
+
+  /* Typography */
+  --font-display: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  /* Animation timing functions - Spring physics */
+  --spring-smooth: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --spring-snappy: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+  --spring-gentle: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* Animation durations */
+  --duration-instant: 150ms;
+  --duration-quick: 250ms;
+  --duration-smooth: 400ms;
 }
 
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  font-family: var(--font-body);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.01em;
   background-color: #18181b;
   /* Ensure the global background is dark */
   color: #ffffff;
@@ -215,5 +229,47 @@ table.mrt-table tr.mantine-Table-tr.mantine-Table-tr-detail-panel td.mantine-Tab
   button,
   .mantine-Button-root {
     min-height: 40px;
+  }
+}
+
+/* ========================================
+   Mobile UI Polish - Animations & Effects
+   ======================================== */
+
+/* Ripple effect for mobile tap feedback */
+.ripple {
+  position: absolute;
+  border-radius: 50%;
+  background: rgba(20, 145, 126, 0.3);
+  transform: scale(0);
+  animation: rippleEffect 600ms ease-out;
+  pointer-events: none;
+}
+
+@keyframes rippleEffect {
+  to {
+    transform: scale(2.5);
+    opacity: 0;
+  }
+}
+
+/* Pulse glow animation for active bottom nav items */
+@keyframes pulseGlow {
+  0%, 100% {
+    filter: drop-shadow(0 0 6px rgba(20, 145, 126, 0.5));
+  }
+  50% {
+    filter: drop-shadow(0 0 12px rgba(20, 145, 126, 0.8));
+  }
+}
+
+/* Respect reduced motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
