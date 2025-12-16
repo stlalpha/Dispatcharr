@@ -1372,14 +1372,12 @@ export default function TVChannelGuide({ startDate, endDate }) {
       ref={tvGuideRef}
       className="tv-guide"
       style={{
-        overflow: 'hidden',
         width: '100%',
         height: '100%',
-        // backgroundColor: 'rgb(39, 39, 42)',
         color: '#fff',
         fontFamily: 'Roboto, sans-serif',
       }}
-      onClick={handleClickOutside} // Close expanded program when clicking outside
+      onClick={handleClickOutside}
     >
       {/* Sticky top bar */}
       <Flex
@@ -1649,7 +1647,6 @@ export default function TVChannelGuide({ startDate, endDate }) {
           style={{
             flex: 1,
             position: 'relative',
-            overflow: 'hidden',
           }}
         >
           {nowPosition >= 0 && (
