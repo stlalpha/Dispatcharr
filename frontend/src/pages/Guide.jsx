@@ -43,6 +43,8 @@ import {
 } from './guideUtils';
 import { useResponsive } from '../hooks/useResponsive';
 import { getGuideTokens } from './Guide/tokens';
+import { useScrollSync } from '../hooks/useScrollSync';
+import { useProgramTextOffsets } from '../hooks/useProgramTextOffsets';
 
 /** Layout constants */
 const HOUR_WIDTH = 450; // Width of each hour block
@@ -276,13 +278,15 @@ export default function TVChannelGuide({ startDate, endDate }) {
   const tvGuideRef = useRef(null); // Ref for the main tv-guide wrapper
   const isSyncingScroll = useRef(false);
   const guideScrollLeftRef = useRef(0);
-  const scrollDebounceRef = useRef(null);
   const {
     ref: guideContainerRef,
     width: guideWidth,
     height: guideHeight,
   } = useElementSize();
-  const [guideScrollLeft, setGuideScrollLeft] = useState(0);
+
+  // Scroll sync hooks - replace old handlers
+  const { updateScroll } = useScrollSync(guideRef, timelineRef);
+  const { registerText } = useProgramTextOffsets(guideRef, !isMobile);
 
   // Add new state to track hovered logo
   const [hoveredChannelId, setHoveredChannelId] = useState(null);
@@ -517,184 +521,8 @@ export default function TVChannelGuide({ startDate, endDate }) {
     return (minutesSinceStart / MINUTE_INCREMENT) * MINUTE_BLOCK_WIDTH;
   }, [now, start, end]);
 
-  useEffect(() => {
-    const tvGuide = tvGuideRef.current;
-
-    if (!tvGuide || isMobile) return undefined; // Skip wheel handling on mobile - not needed for touch devices
-
-    const handleContainerWheel = (event) => {
-      const guide = guideRef.current;
-      const timeline = timelineRef.current;
-
-      if (!guide) {
-        return;
-      }
-
-      if (event.deltaX !== 0 || (event.shiftKey && event.deltaY !== 0)) {
-        event.preventDefault();
-        event.stopPropagation();
-
-        const delta = event.deltaX !== 0 ? event.deltaX : event.deltaY;
-        const newScrollLeft = guide.scrollLeft + delta;
-
-        // Set both guide and timeline scroll positions
-        if (typeof guide.scrollTo === 'function') {
-          guide.scrollTo({ left: newScrollLeft, behavior: 'auto' });
-        } else {
-          guide.scrollLeft = newScrollLeft;
-        }
-
-        // Also sync timeline immediately
-        if (timeline) {
-          if (typeof timeline.scrollTo === 'function') {
-            timeline.scrollTo({ left: newScrollLeft, behavior: 'auto' });
-          } else {
-            timeline.scrollLeft = newScrollLeft;
-          }
-        }
-
-        // Update the ref to keep state in sync
-        guideScrollLeftRef.current = newScrollLeft;
-        setGuideScrollLeft(newScrollLeft);
-      }
-    };
-
-    tvGuide.addEventListener('wheel', handleContainerWheel, {
-      passive: false,
-      capture: true,
-    });
-
-    return () => {
-      tvGuide.removeEventListener('wheel', handleContainerWheel, {
-        capture: true,
-      });
-    };
-  }, [isMobile]);
-
-  useEffect(() => {
-    const tvGuide = tvGuideRef.current;
-    if (!tvGuide || isMobile) return; // Skip custom touch handling on mobile - let native scrolling work
-
-    let lastTouchX = null;
-    let isTouching = false;
-    let rafId = null;
-    let lastScrollLeft = 0;
-    let stableFrames = 0;
-
-    const syncScrollPositions = () => {
-      const guide = guideRef.current;
-      const timeline = timelineRef.current;
-
-      if (!guide || !timeline) return false;
-
-      const currentScroll = guide.scrollLeft;
-
-      // Check if scroll position has changed
-      if (currentScroll !== lastScrollLeft) {
-        timeline.scrollLeft = currentScroll;
-        guideScrollLeftRef.current = currentScroll;
-        setGuideScrollLeft(currentScroll);
-        lastScrollLeft = currentScroll;
-        stableFrames = 0;
-        return true; // Still scrolling
-      } else {
-        stableFrames++;
-        return stableFrames < 10; // Continue for 10 stable frames to catch late updates
-      }
-    };
-
-    const startPolling = () => {
-      if (rafId) return; // Already polling
-
-      const poll = () => {
-        const shouldContinue = isTouching || syncScrollPositions();
-
-        if (shouldContinue) {
-          rafId = requestAnimationFrame(poll);
-        } else {
-          rafId = null;
-        }
-      };
-
-      rafId = requestAnimationFrame(poll);
-    };
-
-    const handleTouchStart = (e) => {
-      if (e.touches.length === 1) {
-        const guide = guideRef.current;
-        if (guide) {
-          lastTouchX = e.touches[0].clientX;
-          lastScrollLeft = guide.scrollLeft;
-          isTouching = true;
-          stableFrames = 0;
-          startPolling();
-        }
-      }
-    };
-
-    const handleTouchMove = (e) => {
-      if (!isTouching || e.touches.length !== 1) return;
-      const guide = guideRef.current;
-      if (!guide) return;
-
-      const touchX = e.touches[0].clientX;
-      const deltaX = lastTouchX - touchX;
-      lastTouchX = touchX;
-
-      if (Math.abs(deltaX) > 0) {
-        guide.scrollLeft += deltaX;
-      }
-    };
-
-    const handleTouchEnd = () => {
-      isTouching = false;
-      lastTouchX = null;
-      // Polling continues until scroll stabilizes
-    };
-
-    tvGuide.addEventListener('touchstart', handleTouchStart, { passive: true });
-    tvGuide.addEventListener('touchmove', handleTouchMove, { passive: false });
-    tvGuide.addEventListener('touchend', handleTouchEnd, { passive: true });
-    tvGuide.addEventListener('touchcancel', handleTouchEnd, { passive: true });
-
-    return () => {
-      if (rafId) cancelAnimationFrame(rafId);
-      tvGuide.removeEventListener('touchstart', handleTouchStart);
-      tvGuide.removeEventListener('touchmove', handleTouchMove);
-      tvGuide.removeEventListener('touchend', handleTouchEnd);
-      tvGuide.removeEventListener('touchcancel', handleTouchEnd);
-    };
-  }, [isMobile]);
-
-  const syncScrollLeft = useCallback((nextLeft, behavior = 'auto') => {
-    const guideNode = guideRef.current;
-    const timelineNode = timelineRef.current;
-
-    isSyncingScroll.current = true;
-
-    if (guideNode) {
-      if (typeof guideNode.scrollTo === 'function') {
-        guideNode.scrollTo({ left: nextLeft, behavior });
-      } else {
-        guideNode.scrollLeft = nextLeft;
-      }
-    }
-
-    if (timelineNode) {
-      if (typeof timelineNode.scrollTo === 'function') {
-        timelineNode.scrollTo({ left: nextLeft, behavior });
-      } else {
-        timelineNode.scrollLeft = nextLeft;
-      }
-    }
-
-    guideScrollLeftRef.current = nextLeft;
-    setGuideScrollLeft(nextLeft);
-
-    requestAnimationFrame(() => {
-      isSyncingScroll.current = false;
-    });
-  }, []);
+  // Use updateScroll from hook for programmatic scrolling
+  const syncScrollLeft = updateScroll;
 
   // Scroll to the nearest half-hour mark ONLY on initial load
   useEffect(() => {
@@ -905,7 +733,6 @@ export default function TVChannelGuide({ startDate, endDate }) {
     }
 
     guideScrollLeftRef.current = nextLeft;
-    setGuideScrollLeft(nextLeft);
 
     isSyncingScroll.current = true;
     if (guideRef.current) {
@@ -962,6 +789,8 @@ export default function TVChannelGuide({ startDate, endDate }) {
     },
     [start, syncScrollLeft]
   );
+
+  // Direct DOM manipulation for text offsets - no React re-renders
   const renderProgram = useCallback(
     (program, channelStart = start, channel = null) => {
       const programStartMs =
@@ -990,23 +819,13 @@ export default function TVChannelGuide({ startDate, endDate }) {
       const MIN_EXPANDED_WIDTH = 450;
       const expandedWidthPx = Math.max(widthPx, MIN_EXPANDED_WIDTH);
 
-      const programStartInView = leftPx + gapSize;
-      const programEndInView = leftPx + gapSize + widthPx;
-      const viewportLeft = guideScrollLeft;
-      const startsBeforeView = programStartInView < viewportLeft;
-      const extendsIntoView = programEndInView > viewportLeft;
-
-      let textOffsetLeft = 0;
-      if (startsBeforeView && extendsIntoView) {
-        const visibleStart = Math.max(viewportLeft - programStartInView, 0);
-        const maxOffset = widthPx - 200;
-        textOffsetLeft = Math.min(visibleStart, maxOffset);
-      }
+      // Create unique key for this program
+      const programKey = `${channel?.id || 'unknown'}-${program.id || `${program.tvg_id}-${program.start_time}`}`;
 
       return (
         <Box
           className="guide-program-container"
-          key={`${channel?.id || 'unknown'}-${program.id || `${program.tvg_id}-${program.start_time}`}`}
+          key={programKey}
           style={{
             position: 'absolute',
             left: leftPx + gapSize,
@@ -1050,8 +869,8 @@ export default function TVChannelGuide({ startDate, endDate }) {
             }}
           >
             <Box
+              ref={(el) => registerText(programKey, el, leftPx, widthPx)}
               style={{
-                transform: `translateX(${textOffsetLeft}px)`,
                 transition: isMobile ? 'none' : 'transform 0.1s ease-out',
               }}
             >
@@ -1094,12 +913,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
             </Box>
 
             {program.description && (
-              <Box
-                style={{
-                  transform: `translateX(${textOffsetLeft}px)`,
-                  transition: isMobile ? 'none' : 'transform 0.1s ease-out',
-                }}
-              >
+              <Box>
                 <Text
                   size="xs"
                   style={{
@@ -1588,7 +1402,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
               className="now-marker"
               style={{
                 position: 'absolute',
-                left: nowPosition + channelWidth - guideScrollLeft,
+                left: nowPosition + channelWidth - guideScrollLeftRef.current,
                 top: 0,
                 bottom: 0,
                 width: '2px',
@@ -1612,35 +1426,6 @@ export default function TVChannelGuide({ startDate, endDate }) {
               ref={listRef}
               outerRef={guideRef}
               overscanCount={8}
-              onScroll={({ scrollOffset, scrollDirection }) => {
-                // Get actual scroll position from the guide element
-                const scrollLeft = guideRef.current?.scrollLeft;
-                if (scrollLeft === undefined) return;
-
-                // Prevent circular updates
-                if (isSyncingScroll.current) return;
-
-                isSyncingScroll.current = true;
-
-                // Immediate timeline sync (no re-render)
-                if (timelineRef.current) {
-                  timelineRef.current.scrollLeft = scrollLeft;
-                }
-                guideScrollLeftRef.current = scrollLeft;
-
-                // Debounced state update for text offset recalculation
-                if (scrollDebounceRef.current) {
-                  clearTimeout(scrollDebounceRef.current);
-                }
-                scrollDebounceRef.current = setTimeout(() => {
-                  setGuideScrollLeft(scrollLeft);
-                }, 50);
-
-                // Release sync lock next frame
-                requestAnimationFrame(() => {
-                  isSyncingScroll.current = false;
-                });
-              }}
             >
               {GuideRow}
             </VariableSizeList>

@@ -200,6 +200,44 @@
   position: relative;
 }
 
+/* Edge scroll shadows for horizontal scroll affordance */
+.tv-guide::before,
+.tv-guide::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 40px;
+  pointer-events: none;
+  z-index: 20;
+  opacity: 0;
+  transition: opacity 200ms ease-out;
+}
+
+.tv-guide::before {
+  left: 120px; /* After channel logo column */
+  background: linear-gradient(to right, rgba(0,0,0,0.4), transparent);
+}
+
+.tv-guide::after {
+  right: 0;
+  background: linear-gradient(to left, rgba(0,0,0,0.4), transparent);
+}
+
+@media (max-width: 767.99px) {
+  .tv-guide::before {
+    left: 72px; /* Mobile channel width */
+  }
+}
+
+.tv-guide[data-scroll-left="true"]::before {
+  opacity: 1;
+}
+
+.tv-guide[data-scroll-right="true"]::after {
+  opacity: 1;
+}
+
 /* Scroll container optimization */
 .tv-guide .guide-list-outer {
   overflow-y: auto !important;
@@ -207,11 +245,9 @@
   scrollbar-width: none;
   -ms-overflow-style: none;
   -webkit-overflow-scrolling: touch;
-  scroll-behavior: smooth;
   overscroll-behavior: contain;
   /* GPU acceleration for smooth scrolling */
   transform: translateZ(0);
-  will-change: scroll-position;
   /* Containment for better performance */
   contain: layout style;
 }
