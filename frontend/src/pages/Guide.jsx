@@ -1654,6 +1654,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
         >
           {nowPosition >= 0 && (
             <Box
+              className="now-marker"
               style={{
                 position: 'absolute',
                 left: nowPosition + channelWidth - guideScrollLeft,

@@ -215,8 +215,8 @@
 @media (max-width: 767.99px) {
   .tv-guide .guide-list-outer {
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior-y: contain;
-    scroll-snap-type: y proximity;
+    overscroll-behavior: contain;
+    /* Note: scroll-snap on mobile disabled for now - causes jank */
   }
 
   /* Reduce will-change scope on mobile for better performance */
