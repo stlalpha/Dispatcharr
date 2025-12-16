@@ -9,12 +9,18 @@ import { useRef, useCallback, useLayoutEffect } from 'react';
  *
  * @param {RefObject} primaryRef - Main scrollable container (e.g., react-window outerRef)
  * @param {RefObject} secondaryRef - Container to sync with primary
+ * @param {Function} [onPrimaryScroll] - Optional callback when primary scrolls (receives scrollLeft)
  * @returns {Object} - { scrollLeft (current position), updateScroll (function) }
  */
-export function useScrollSync(primaryRef, secondaryRef) {
+export function useScrollSync(primaryRef, secondaryRef, onPrimaryScroll) {
   const lastScrollLeft = useRef(0);
   const listenerAttached = useRef(false);
   const scrollHandlerRef = useRef(null);
+  const onPrimaryScrollRef = useRef(onPrimaryScroll);
+
+  useLayoutEffect(() => {
+    onPrimaryScrollRef.current = onPrimaryScroll;
+  }, [onPrimaryScroll]);
 
   // Create stable scroll handler
   scrollHandlerRef.current = () => {
@@ -25,12 +31,21 @@ export function useScrollSync(primaryRef, secondaryRef) {
 
     // Position comparison prevents circular updates
     if (scrollLeft === lastScrollLeft.current) return;
+
     lastScrollLeft.current = scrollLeft;
 
-    // Direct DOM sync - synchronous, no React overhead
+    // Direct DOM sync; mark programmatic write to avoid feedback loops
     if (secondaryRef.current) {
+      secondaryRef.current.__scrollSyncing = true;
       secondaryRef.current.scrollLeft = scrollLeft;
+      requestAnimationFrame(() => {
+        if (secondaryRef.current) {
+          secondaryRef.current.__scrollSyncing = false;
+        }
+      });
     }
+
+    onPrimaryScrollRef.current?.(scrollLeft);
   };
 
   // Use useLayoutEffect to run synchronously after DOM mutations
@@ -44,7 +59,6 @@ export function useScrollSync(primaryRef, secondaryRef) {
       primary.addEventListener('scroll', handler, { passive: true });
       listenerAttached.current = true;
 
-      // Store cleanup function
       return () => {
         primary.removeEventListener('scroll', handler);
         listenerAttached.current = false;
@@ -55,7 +69,7 @@ export function useScrollSync(primaryRef, secondaryRef) {
     const cleanup = attachListener();
     if (cleanup) return cleanup;
 
-    // If primary ref not ready, observe for when it becomes available
+    // If primary ref not ready, poll until it becomes available
     // react-window assigns outerRef after initial render cycle
     let rafId;
     let attempts = 0;
@@ -65,10 +79,7 @@ export function useScrollSync(primaryRef, secondaryRef) {
       attempts++;
       if (primaryRef.current && !listenerAttached.current) {
         const cleanup = attachListener();
-        if (cleanup) {
-          // Store cleanup for later
-          cleanupFnRef.current = cleanup;
-        }
+        if (cleanup) cleanupFnRef.current = cleanup;
         return;
       }
       if (attempts < maxAttempts) {
@@ -82,7 +93,6 @@ export function useScrollSync(primaryRef, secondaryRef) {
     return () => {
       if (rafId) cancelAnimationFrame(rafId);
       if (cleanupFnRef.current) cleanupFnRef.current();
-      // Reset attachment flag on cleanup
       listenerAttached.current = false;
     };
   }, [primaryRef, secondaryRef]);
@@ -102,11 +112,17 @@ export function useScrollSync(primaryRef, secondaryRef) {
       }
 
       if (secondaryRef.current) {
+        secondaryRef.current.__scrollSyncing = true;
         if (typeof secondaryRef.current.scrollTo === 'function') {
           secondaryRef.current.scrollTo({ left: scrollLeft, behavior });
         } else {
           secondaryRef.current.scrollLeft = scrollLeft;
         }
+        requestAnimationFrame(() => {
+          if (secondaryRef.current) {
+            secondaryRef.current.__scrollSyncing = false;
+          }
+        });
       }
 
       lastScrollLeft.current = scrollLeft;

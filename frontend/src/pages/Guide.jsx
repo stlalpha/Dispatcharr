@@ -285,35 +285,10 @@ export default function TVChannelGuide({ startDate, endDate }) {
   } = useElementSize();
 
   // Scroll sync hooks - replace old handlers
-  const { updateScroll } = useScrollSync(guideRef, timelineRef);
+  const { updateScroll } = useScrollSync(guideRef, timelineRef, (left) => {
+    guideScrollLeftRef.current = left;
+  });
   const { registerText } = useProgramTextOffsets(guideRef, !isMobile);
-
-  // DEBUG: Test if scroll events fire on guide
-  useEffect(() => {
-    const guide = guideRef.current;
-    if (!guide) {
-      console.log('DEBUG: guideRef.current is null');
-      return;
-    }
-
-    console.log('DEBUG: guideRef.current exists, attaching test listener');
-
-    const testScroll = () => {
-      const timeline = timelineRef.current;
-      console.log('DEBUG: Scroll event fired!', {
-        guideScrollLeft: guide.scrollLeft,
-        timelineScrollLeft: timeline?.scrollLeft,
-        timelineExists: !!timeline,
-      });
-    };
-
-    guide.addEventListener('scroll', testScroll, { passive: true });
-
-    return () => {
-      console.log('DEBUG: Cleaning up test listener');
-      guide.removeEventListener('scroll', testScroll);
-    };
-  }, []);
 
   // Add new state to track hovered logo
   const [hoveredChannelId, setHoveredChannelId] = useState(null);
@@ -548,7 +523,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
     return (minutesSinceStart / MINUTE_INCREMENT) * MINUTE_BLOCK_WIDTH;
   }, [now, start, end]);
 
-  // Use updateScroll from hook for programmatic scrolling
+  // Use hook for programmatic scrolling
   const syncScrollLeft = updateScroll;
 
   // Scroll to the nearest half-hour mark ONLY on initial load
@@ -750,11 +725,12 @@ export default function TVChannelGuide({ startDate, endDate }) {
   }, [now, nowPosition, start, syncScrollLeft]);
 
   const handleTimelineScroll = useCallback(() => {
-    if (!timelineRef.current || isSyncingScroll.current) {
+    const timeline = timelineRef.current;
+    if (!timeline || isSyncingScroll.current || timeline.__scrollSyncing) {
       return;
     }
 
-    const nextLeft = timelineRef.current.scrollLeft;
+    const nextLeft = timeline.scrollLeft;
     if (nextLeft === guideScrollLeftRef.current) {
       return;
     }
@@ -1304,6 +1280,9 @@ export default function TVChannelGuide({ startDate, endDate }) {
                 overflowX: 'auto',
                 overflowY: 'hidden',
                 position: 'relative',
+                WebkitOverflowScrolling: 'touch',
+                touchAction: 'pan-x',
+                overscrollBehavior: 'contain',
               }}
               onScroll={handleTimelineScroll}
               onWheel={handleTimelineWheel} // Add wheel event handler
