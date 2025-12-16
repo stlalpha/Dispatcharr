@@ -6,18 +6,18 @@
 
 export const guideTokens = {
   row: {
-    base: 48,              // Mobile row height
+    base: 56,              // Mobile row height (meets 44px min tap target with padding)
     desktop: 90,           // Desktop row height
-    expandedBase: 96,      // Mobile expanded row
+    expandedBase: 112,     // Mobile expanded row
     expandedDesktop: 180,  // Desktop expanded row
   },
   channel: {
-    base: 72,              // Mobile channel column width
+    base: 64,              // Mobile channel column width (optimized for screen space)
     desktop: 120,          // Desktop channel column width
   },
   timeline: {
     hourWidth: 450,        // Width of each hour block (same for mobile/desktop)
-    headerBase: 32,        // Mobile time header height
+    headerBase: 44,        // Mobile time header height (meets min tap target)
     headerDesktop: 40,     // Desktop time header height
   },
   program: {

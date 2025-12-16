@@ -10,13 +10,16 @@ export const useRipple = () => {
     }
 
     const circle = document.createElement('span');
-    const diameter = Math.max(button.clientWidth, button.clientHeight);
+    const diameter = Math.max(button.clientWidth, button.clientHeight) * 2.5;
     const radius = diameter / 2;
 
     const rect = button.getBoundingClientRect();
+    const touchX = event.clientX - rect.left;
+    const touchY = event.clientY - rect.top;
+
     circle.style.width = circle.style.height = `${diameter}px`;
-    circle.style.left = `${event.clientX - rect.left - radius}px`;
-    circle.style.top = `${event.clientY - rect.top - radius}px`;
+    circle.style.left = `${touchX - radius}px`;
+    circle.style.top = `${touchY - radius}px`;
     circle.classList.add('ripple');
 
     button.appendChild(circle);
@@ -25,7 +28,7 @@ export const useRipple = () => {
       if (circle.parentNode) {
         circle.remove();
       }
-    }, 600);
+    }, 800);
   }, []);
 
   return createRipple;

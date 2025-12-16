@@ -7,8 +7,9 @@
   background: linear-gradient(to right, #3A3A3F, #2A2A2E);
   border: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
-  transition: all 0.2s ease-out;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
   font-size: 14px;
+  cursor: pointer;
 
   /* CSS Grid for content hierarchy */
   display: grid;
@@ -17,6 +18,13 @@
   align-content: start;
   height: 100%;
   min-height: 0;
+  min-width: 48px;
+}
+
+/* Immediate tap feedback */
+.tv-guide .guide-program-container .guide-program:active {
+  transform: scale(0.97);
+  filter: brightness(1.15);
 }
 
 /* Program content structure */
@@ -49,20 +57,27 @@
 /* Mobile: compact everything, hide descriptions */
 @media (max-width: 767.99px) {
   .tv-guide .guide-program-container .guide-program {
-    padding: 4px 6px;
+    padding: 6px 8px;
     font-size: 11px;
     border-radius: 4px;
     grid-template-rows: auto auto;
     gap: 2px;
+    min-width: 56px;
+  }
+
+  .tv-guide .guide-program-container .guide-program:active {
+    transform: scale(0.95);
   }
 
   .program-title {
     font-size: 11px;
-    line-height: 1.2;
+    line-height: 1.3;
+    letter-spacing: -0.01em;
   }
 
   .program-time {
-    font-size: 10px;
+    font-size: 9px;
+    font-weight: 500;
   }
 
   .program-description {
@@ -150,12 +165,19 @@
 /* Time header cells */
 .time-header-cell {
   height: 40px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+  padding-top: 8px;
+  line-height: 1.2;
 }
 
 @media (max-width: 767.99px) {
   .time-header-cell {
-    height: 32px;
+    height: 44px;
     font-size: 11px;
+    padding-top: 6px;
   }
 }
 
@@ -174,24 +196,27 @@
   position: relative;
 }
 
-/* Hide bottom horizontal scrollbar for the guide's virtualized list only */
+/* Scroll container optimization */
 .tv-guide .guide-list-outer {
-  /* Allow horizontal scrolling but hide the scrollbar visually */
+  overflow-y: auto !important;
   overflow-x: auto !important;
-  scrollbar-width: none; /* Firefox */
-  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: smooth;
+  overscroll-behavior: contain;
 }
 
-/* Also hide scrollbars visually across browsers for the outer container */
 .tv-guide .guide-list-outer::-webkit-scrollbar {
-  display: none; /* Chrome, Safari, Opera */
+  display: none;
 }
 
 /* Mobile-specific scroll optimization */
 @media (max-width: 767.99px) {
   .tv-guide .guide-list-outer {
     -webkit-overflow-scrolling: touch;
-    scroll-behavior: smooth;
+    overscroll-behavior-y: contain;
+    scroll-snap-type: y proximity;
   }
 
   /* Reduce will-change scope on mobile for better performance */

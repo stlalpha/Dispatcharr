@@ -1489,7 +1489,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
         style={{
           display: 'flex',
           flexDirection: 'column',
-          height: 'calc(100vh - 120px)',
+          height: isMobile ? 'calc(100vh - 140px)' : 'calc(100vh - 120px)',
         }}
       >
         {/* Logo header - Sticky, non-scrollable */}
