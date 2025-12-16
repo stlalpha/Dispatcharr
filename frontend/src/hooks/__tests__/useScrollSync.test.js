@@ -1,12 +1,30 @@
-import { describe, test, expect, vi, beforeEach } from 'vitest';
+import { describe, test, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useScrollSync } from '../useScrollSync';
 
 describe('useScrollSync', () => {
   let primaryRef;
   let secondaryRef;
+  let originalRAF;
+  let originalCAF;
+  let rafCallbacks;
 
   beforeEach(() => {
+    // Mock requestAnimationFrame for synchronous testing
+    rafCallbacks = [];
+    originalRAF = global.requestAnimationFrame;
+    originalCAF = global.cancelAnimationFrame;
+
+    global.requestAnimationFrame = vi.fn((callback) => {
+      const id = rafCallbacks.length;
+      rafCallbacks.push(callback);
+      return id;
+    });
+
+    global.cancelAnimationFrame = vi.fn((id) => {
+      rafCallbacks[id] = null;
+    });
+
     // Create mock refs with DOM-like scroll properties
     primaryRef = {
       current: {
@@ -28,6 +46,17 @@ describe('useScrollSync', () => {
       },
     };
   });
+
+  afterEach(() => {
+    global.requestAnimationFrame = originalRAF;
+    global.cancelAnimationFrame = originalCAF;
+  });
+
+  // Helper to flush RAF callbacks
+  const flushRAF = () => {
+    rafCallbacks.forEach((cb) => cb?.());
+    rafCallbacks = [];
+  };
 
   test('attaches scroll listener to primary container', () => {
     renderHook(() => useScrollSync(primaryRef, secondaryRef));
@@ -60,19 +89,22 @@ describe('useScrollSync', () => {
 
     const scrollHandler = primaryRef.current.addEventListener.mock.calls[0][1];
 
-    // Set both to same position
-    primaryRef.current.scrollLeft = 100;
-    secondaryRef.current.scrollLeft = 100;
+    // First scroll to set lastScrollLeft
+    act(() => {
+      primaryRef.current.scrollLeft = 100;
+      scrollHandler();
+    });
 
     // Reset mocks to track new calls
     vi.clearAllMocks();
 
-    // Trigger scroll handler
+    // Trigger scroll handler again with same position
     act(() => {
       scrollHandler();
     });
 
-    // Secondary should NOT be updated (position unchanged)
+    // Secondary scrollLeft should not have been reassigned (no change)
+    // It's still 100 from before, but no new assignment happened
     expect(secondaryRef.current.scrollLeft).toBe(100);
   });
 
@@ -148,5 +180,53 @@ describe('useScrollSync', () => {
         scrollHandler();
       });
     }).not.toThrow();
+  });
+
+  test('attaches listener via RAF polling when ref is initially null', () => {
+    // Start with null ref
+    const delayedRef = { current: null };
+
+    renderHook(() => useScrollSync(delayedRef, secondaryRef));
+
+    // No listener attached yet since ref is null
+    expect(delayedRef.current).toBeNull();
+
+    // Simulate ref becoming available (like react-window outerRef)
+    delayedRef.current = {
+      scrollLeft: 0,
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      scrollTo: vi.fn(),
+    };
+
+    // Flush RAF callbacks to trigger attachment
+    act(() => {
+      flushRAF();
+    });
+
+    // Now listener should be attached
+    expect(delayedRef.current.addEventListener).toHaveBeenCalledWith(
+      'scroll',
+      expect.any(Function),
+      { passive: true }
+    );
+  });
+
+  test('updateScroll handles elements without scrollTo method', () => {
+    // Create refs with only scrollLeft (no scrollTo)
+    const simpleRef = {
+      current: {
+        scrollLeft: 0,
+      },
+    };
+
+    const { result } = renderHook(() => useScrollSync(primaryRef, simpleRef));
+
+    act(() => {
+      result.current.updateScroll(500);
+    });
+
+    // Should fall back to direct scrollLeft assignment
+    expect(simpleRef.current.scrollLeft).toBe(500);
   });
 });
