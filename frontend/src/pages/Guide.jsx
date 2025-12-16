@@ -971,7 +971,6 @@ export default function TVChannelGuide({ startDate, endDate }) {
     },
     [
       expandedProgramId,
-      guideScrollLeft,
       handleProgramClick,
       handleWatchStream,
       now,
@@ -979,6 +978,7 @@ export default function TVChannelGuide({ startDate, endDate }) {
       recordingsByProgramId,
       start,
       timeFormat,
+      registerText,
     ]
   );
 
